@@ -1,0 +1,35 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  publish:
+    environment:
+      name: pypi
+      url: https://pypi.org/p/openai-agents
+    permissions:
+      id-token: write # Important for trusted publishing to PyPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: make sync
+      - name: Run tests
+        run: make tests
+      - name: Run mypy
+        run: make mypy
+      - name: Run Python 3.9 tests
+        run: make old_version_tests
+      - name: Build package
+        run: uv build
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
