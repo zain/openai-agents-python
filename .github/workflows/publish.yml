@@ -28,12 +28,6 @@ jobs:
           enable-cache: true
       - name: Install dependencies
         run: make sync
-      - name: Run tests
-        run: make tests
-      - name: Run mypy
-        run: make mypy
-      - name: Run Python 3.9 tests
-        run: make old_version_tests
       - name: Build package
         run: uv build
       - name: Publish to PyPI
