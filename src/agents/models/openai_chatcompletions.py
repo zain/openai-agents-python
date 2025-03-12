@@ -503,6 +503,7 @@ class OpenAIChatCompletionsModel(Model):
             top_p=self._non_null_or_not_given(model_settings.top_p),
             frequency_penalty=self._non_null_or_not_given(model_settings.frequency_penalty),
             presence_penalty=self._non_null_or_not_given(model_settings.presence_penalty),
+            max_tokens=self._non_null_or_not_given(model_settings.max_tokens),
             tool_choice=tool_choice,
             response_format=response_format,
             parallel_tool_calls=parallel_tool_calls,
@@ -808,6 +809,13 @@ class _Converter:
                         "content": cls.extract_text_content(content),
                     }
                     result.append(msg_developer)
+                elif role == "assistant":
+                    flush_assistant_message()
+                    msg_assistant: ChatCompletionAssistantMessageParam = {
+                        "role": "assistant",
+                        "content": cls.extract_text_content(content),
+                    }
+                    result.append(msg_assistant)
                 else:
                     raise UserError(f"Unexpected role in easy_input_message: {role}")
 
