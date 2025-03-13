@@ -47,9 +47,11 @@ print(result.final_output)
 
 (_If running this, ensure you set the `OPENAI_API_KEY` environment variable_)
 
+(_For Jupyter notebook users, see [hello_world_jupyter.py](examples/basic/hello_world_jupyter.py)_)
+
 ## Handoffs example
 
-```py
+```python
 from agents import Agent, Runner
 import asyncio
 
@@ -146,6 +148,7 @@ The Agents SDK automatically traces your agent runs, making it easy to track and
 - [Comet Opik](https://www.comet.com/docs/opik/tracing/integrations/openai_agents)
 - [Keywords AI](https://docs.keywordsai.co/integration/development-frameworks/openai-agent)
 - [Logfire](https://logfire.pydantic.dev/docs/integrations/llms/openai/#openai-agents)
+- [Scorecard](https://docs.scorecard.io/docs/documentation/features/tracing#openai-agents-sdk-integration)
 
 For more details about how to customize or disable tracing, see [Tracing](http://openai.github.io/openai-agents-python/tracing).
 
