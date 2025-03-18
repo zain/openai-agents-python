@@ -4,7 +4,7 @@ import graphviz
 import pytest
 
 from agents import Agent
-from agents.extensions.visualizations import draw_graph, get_all_edges, get_all_nodes, get_main_graph
+from agents.extensions.visualization import draw_graph, get_all_edges, get_all_nodes, get_main_graph
 
 
 @pytest.fixture
