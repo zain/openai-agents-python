@@ -42,21 +42,24 @@ def get_all_nodes(agent: Agent, parent: Agent = None) -> str:
     parts = []
     # Ensure parent agent node is colored
     if not parent:
-        parts.append(f"""
-        "{agent.name}" [label="{agent.name}", shape=box, style=filled,
-        fillcolor=lightyellow, width=1.5, height=0.8];""")
+        parts.append(
+            f'"{agent.name}" [label="{agent.name}", shape=box, style=filled, '
+            'fillcolor=lightyellow, width=1.5, height=0.8];'
+        )
 
     # Smaller tools (ellipse, green)
     for tool in agent.tools:
-        parts.append(f"""
-        "{tool.name}" [label="{tool.name}", shape=ellipse, style=filled,
-        fillcolor=lightgreen, width=0.5, height=0.3];""")
+        parts.append(
+            f'"{tool.name}" [label="{tool.name}", shape=ellipse, style=filled, '
+            f'fillcolor=lightgreen, width=0.5, height=0.3];'
+        )
 
     # Bigger handoffs (rounded box, yellow)
     for handoff in agent.handoffs:
-        parts.append(f"""
-        "{handoff.name}" [label="{handoff.name}", shape=box, style=filled,
-        style=rounded, fillcolor=lightyellow, width=1.5, height=0.8];""")
+        parts.append(
+            f'"{handoff.name}" [label="{handoff.name}", shape=box, style=filled, style=rounded, '
+            f'fillcolor=lightyellow, width=1.5, height=0.8];'
+        )
         parts.append(get_all_nodes(handoff))
 
     return "".join(parts)
