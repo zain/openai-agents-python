@@ -19,7 +19,6 @@ def get_main_graph(agent: Agent) -> str:
         graph [splines=true];
         node [fontname="Arial"];
         edge [penwidth=1.5];
-        
         "__start__" [shape=ellipse, style=filled, fillcolor=lightblue];
         "__end__" [shape=ellipse, style=filled, fillcolor=lightblue];
     """
@@ -41,21 +40,23 @@ def get_all_nodes(agent: Agent, parent: Agent = None) -> str:
         str: The DOT format string representing the nodes.
     """
     parts = []
-
     # Ensure parent agent node is colored
     if not parent:
         parts.append(f"""
-        "{agent.name}" [label="{agent.name}", shape=box, style=filled, fillcolor=lightyellow, width=1.5, height=0.8];""")
+        "{agent.name}" [label="{agent.name}", shape=box, style=filled,
+        fillcolor=lightyellow, width=1.5, height=0.8];""")
 
     # Smaller tools (ellipse, green)
     for tool in agent.tools:
         parts.append(f"""
-        "{tool.name}" [label="{tool.name}", shape=ellipse, style=filled, fillcolor=lightgreen, width=0.5, height=0.3];""")
+        "{tool.name}" [label="{tool.name}", shape=ellipse, style=filled,
+        fillcolor=lightgreen, width=0.5, height=0.3];""")
 
     # Bigger handoffs (rounded box, yellow)
     for handoff in agent.handoffs:
         parts.append(f"""
-        "{handoff.name}" [label="{handoff.name}", shape=box, style=filled, style=rounded, fillcolor=lightyellow, width=1.5, height=0.8];""")
+        "{handoff.name}" [label="{handoff.name}", shape=box, style=filled,
+        style=rounded, fillcolor=lightyellow, width=1.5, height=0.8];""")
         parts.append(get_all_nodes(handoff))
 
     return "".join(parts)
