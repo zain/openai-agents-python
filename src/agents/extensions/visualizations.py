@@ -1,6 +1,6 @@
 import graphviz
 
-from src.agents.agent import Agent
+from agents import Agent
 
 
 def get_main_graph(agent: Agent) -> str:

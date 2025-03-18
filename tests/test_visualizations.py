@@ -3,8 +3,8 @@ from unittest.mock import Mock
 import graphviz
 import pytest
 
-from src.agents.agent import Agent
-from src.agents.visualizations import draw_graph, get_all_edges, get_all_nodes, get_main_graph
+from agents import Agent
+from agents.extensions.visualizations import draw_graph, get_all_edges, get_all_nodes, get_main_graph
 
 
 @pytest.fixture
