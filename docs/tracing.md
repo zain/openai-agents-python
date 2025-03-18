@@ -99,3 +99,4 @@ To customize this default setup, to send traces to alternative or additional bac
 -   [Scorecard](https://docs.scorecard.io/docs/documentation/features/tracing#openai-agents-sdk-integration)
 -   [Keywords AI](https://docs.keywordsai.co/integration/development-frameworks/openai-agent)
 -   [LangSmith](https://docs.smith.langchain.com/observability/how_to_guides/trace_with_openai_agents_sdk)
+-   [Maxim AI](https://www.getmaxim.ai/docs/observe/integrations/openai-agents-sdk)
