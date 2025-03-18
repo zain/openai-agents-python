@@ -18,6 +18,13 @@ mypy:
 tests: 
 	uv run pytest 
 
+.PHONY: coverage
+coverage:
+	
+	uv run coverage run -m pytest
+	uv run coverage xml -o coverage.xml
+	uv run coverage report -m --fail-under=95
+
 .PHONY: snapshots-fix
 snapshots-fix: 
 	uv run pytest --inline-snapshot=fix 
@@ -42,4 +49,6 @@ serve-docs:
 .PHONY: deploy-docs
 deploy-docs:
 	uv run mkdocs gh-deploy --force --verbose
+
+	
 	
