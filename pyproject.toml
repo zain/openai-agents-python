@@ -15,7 +15,6 @@ dependencies = [
     "typing-extensions>=4.12.2, <5",
     "requests>=2.0, <3",
     "types-requests>=2.0, <3",
-    "graphviz>=0.17",
 ]
 classifiers = [
     "Typing :: Typed",
@@ -50,6 +49,10 @@ dev = [
     "playwright==1.50.0",
     "inline-snapshot>=0.20.7",
 ]
+visualization = [
+    "graphviz>=0.17",
+]
+
 [tool.uv.workspace]
 members = ["agents"]
 
