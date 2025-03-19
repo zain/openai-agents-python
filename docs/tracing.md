@@ -9,6 +9,8 @@ The Agents SDK includes built-in tracing, collecting a comprehensive record of e
     1. You can globally disable tracing by setting the env var `OPENAI_AGENTS_DISABLE_TRACING=1`
     2. You can disable tracing for a single run by setting [`agents.run.RunConfig.tracing_disabled`][] to `True`
 
+***For organizations operating under a Zero Data Retention (ZDR) policy using OpenAI's APIs, tracing is unavailable.***
+
 ## Traces and spans
 
 -   **Traces** represent a single end-to-end operation of a "workflow". They're composed of Spans. Traces have the following properties:
@@ -88,11 +90,15 @@ To customize this default setup, to send traces to alternative or additional bac
 1. [`add_trace_processor()`][agents.tracing.add_trace_processor] lets you add an **additional** trace processor that will receive traces and spans as they are ready. This lets you do your own processing in addition to sending traces to OpenAI's backend.
 2. [`set_trace_processors()`][agents.tracing.set_trace_processors] lets you **replace** the default processors with your own trace processors. This means traces will not be sent to the OpenAI backend unless you include a `TracingProcessor` that does so.
 
-External trace processors include:
+## External tracing processors list
 
--   [AgentOps](https://docs.agentops.ai/v1/integrations/agentssdk)
+-   [Arize-Phoenix](https://docs.arize.com/phoenix/tracing/integrations-tracing/openai-agents-sdk)
+-   [MLflow](https://mlflow.org/docs/latest/tracing/integrations/openai-agent)
 -   [Braintrust](https://braintrust.dev/docs/guides/traces/integrations#openai-agents-sdk)
--   [Comet Opik](https://www.comet.com/docs/opik/tracing/integrations/openai_agents)
--   [Scorecard](https://docs.scorecard.io/docs/documentation/features/tracing#openai-agents-sdk-integration))
--   [Keywords AI](https://docs.keywordsai.co/integration/development-frameworks/openai-agent)
 -   [Pydantic Logfire](https://logfire.pydantic.dev/docs/integrations/llms/openai/#openai-agents)
+-   [AgentOps](https://docs.agentops.ai/v1/integrations/agentssdk)
+-   [Scorecard](https://docs.scorecard.io/docs/documentation/features/tracing#openai-agents-sdk-integration)
+-   [Keywords AI](https://docs.keywordsai.co/integration/development-frameworks/openai-agent)
+-   [LangSmith](https://docs.smith.langchain.com/observability/how_to_guides/trace_with_openai_agents_sdk)
+-   [Maxim AI](https://www.getmaxim.ai/docs/observe/integrations/openai-agents-sdk)
+-   [Comet Opik](https://www.comet.com/docs/opik/tracing/integrations/openai_agents)
