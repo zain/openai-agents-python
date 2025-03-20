@@ -47,6 +47,7 @@ from .items import (
 )
 from .lifecycle import RunHooks
 from .logger import logger
+from .model_settings import ModelSettings
 from .models.interface import ModelTracing
 from .run_context import RunContextWrapper, TContext
 from .stream_events import RunItemStreamEvent, StreamEvent
@@ -205,6 +206,37 @@ class RunImpl:
         )
         new_step_items.extend([result.run_item for result in function_results])
         new_step_items.extend(computer_results)
+
+        # Reset tool_choice to "auto" after tool execution to prevent infinite loops
+        if (processed_response.functions or processed_response.computer_actions):
+            # Reset agent's model_settings
+            if agent.model_settings.tool_choice == "required" or isinstance(agent.model_settings.tool_choice, str):
+                # Create a new model_settings to avoid modifying the original shared instance
+                agent.model_settings = ModelSettings(
+                    temperature=agent.model_settings.temperature,
+                    top_p=agent.model_settings.top_p,
+                    frequency_penalty=agent.model_settings.frequency_penalty,
+                    presence_penalty=agent.model_settings.presence_penalty,
+                    tool_choice="auto",  # Reset to auto
+                    parallel_tool_calls=agent.model_settings.parallel_tool_calls,
+                    truncation=agent.model_settings.truncation,
+                    max_tokens=agent.model_settings.max_tokens,
+                )
+            
+            # Also reset run_config's model_settings if it exists
+            if run_config.model_settings and (run_config.model_settings.tool_choice == "required" or 
+                                             isinstance(run_config.model_settings.tool_choice, str)):
+                # Create a new model_settings for run_config
+                run_config.model_settings = ModelSettings(
+                    temperature=run_config.model_settings.temperature,
+                    top_p=run_config.model_settings.top_p,
+                    frequency_penalty=run_config.model_settings.frequency_penalty,
+                    presence_penalty=run_config.model_settings.presence_penalty,
+                    tool_choice="auto",  # Reset to auto
+                    parallel_tool_calls=run_config.model_settings.parallel_tool_calls,
+                    truncation=run_config.model_settings.truncation,
+                    max_tokens=run_config.model_settings.max_tokens,
+                )
 
         # Second, check if there are any handoffs
         if run_handoffs := processed_response.handoffs:
