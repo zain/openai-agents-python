@@ -6,16 +6,19 @@ from typing import Literal
 import numpy as np
 import numpy.typing as npt
 
-from agents.voice import (
-    AudioInput,
-    StreamedAudioInput,
-    StreamedTranscriptionSession,
-    STTModel,
-    STTModelSettings,
-    TTSModel,
-    TTSModelSettings,
-    VoiceWorkflowBase,
-)
+try:
+    from agents.voice import (
+        AudioInput,
+        StreamedAudioInput,
+        StreamedTranscriptionSession,
+        STTModel,
+        STTModelSettings,
+        TTSModel,
+        TTSModelSettings,
+        VoiceWorkflowBase,
+    )
+except ImportError:
+    pass
 
 
 class FakeTTS(TTSModel):

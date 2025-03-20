@@ -11,8 +11,7 @@ from textual.reactive import reactive
 from textual.widgets import Button, RichLog, Static
 from typing_extensions import override
 
-from agents import VoicePipeline
-from agents.voice.input import StreamedAudioInput
+from agents.voice import StreamedAudioInput, VoicePipeline
 
 from .agents import MyWorkflow
 

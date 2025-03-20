@@ -8,11 +8,15 @@ from unittest.mock import AsyncMock, patch
 import numpy as np
 import pytest
 
-from agents.voice import OpenAISTTTranscriptionSession, StreamedAudioInput, STTModelSettings
-from agents.voice.exceptions import STTWebsocketConnectionError
-from agents.voice.models.openai_stt import EVENT_INACTIVITY_TIMEOUT
+try:
+    from agents.voice import OpenAISTTTranscriptionSession, StreamedAudioInput, STTModelSettings
+    from agents.voice.exceptions import STTWebsocketConnectionError
+    from agents.voice.models.openai_stt import EVENT_INACTIVITY_TIMEOUT
 
-from .fake_models import FakeStreamedAudioInput
+    from .fake_models import FakeStreamedAudioInput
+except ImportError:
+    pass
+
 
 # ===== Helpers =====
 

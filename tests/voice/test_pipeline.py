@@ -4,10 +4,13 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from agents.voice import AudioInput, TTSModelSettings, VoicePipeline, VoicePipelineConfig
+try:
+    from agents.voice import AudioInput, TTSModelSettings, VoicePipeline, VoicePipelineConfig
 
-from .fake_models import FakeStreamedAudioInput, FakeSTT, FakeTTS, FakeWorkflow
-from .helpers import extract_events
+    from .fake_models import FakeStreamedAudioInput, FakeSTT, FakeTTS, FakeWorkflow
+    from .helpers import extract_events
+except ImportError:
+    pass
 
 
 @pytest.mark.asyncio

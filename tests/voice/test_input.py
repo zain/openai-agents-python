@@ -4,9 +4,12 @@ import wave
 import numpy as np
 import pytest
 
-from agents import UserError
-from agents.voice import AudioInput, StreamedAudioInput
-from agents.voice.input import DEFAULT_SAMPLE_RATE, _buffer_to_audio_file
+try:
+    from agents import UserError
+    from agents.voice import AudioInput, StreamedAudioInput
+    from agents.voice.input import DEFAULT_SAMPLE_RATE, _buffer_to_audio_file
+except ImportError:
+    pass
 
 
 def test_buffer_to_audio_file_int16():
