@@ -1,18 +1,12 @@
 import asyncio
 
-from agents import Agent, Runner, ModelSettings, OpenAIResponsesModel
+from agents import Agent, Runner
 
 
 async def main():
     agent = Agent(
-        name="English agent",
-        instructions="You only speak English",
-        model=OpenAIResponsesModel(
-            model="gpt-4o",
-            model_settings=ModelSettings(
-                store=False,
-            )
-        )
+        name="Assistant",
+        instructions="You only respond in haikus.",
     )
 
     result = await Runner.run(agent, "Tell me about recursion in programming.")
