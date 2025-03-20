@@ -1085,6 +1085,7 @@ dev = [
     { name = "sounddevice" },
     { name = "textual" },
     { name = "types-pynput" },
+    { name = "websockets" },
 ]
 
 [package.metadata]
@@ -1118,6 +1119,7 @@ dev = [
     { name = "sounddevice" },
     { name = "textual" },
     { name = "types-pynput" },
+    { name = "websockets" },
 ]
 
 [[package]]

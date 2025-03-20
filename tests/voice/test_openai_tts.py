@@ -5,7 +5,10 @@ from typing import Any
 
 import pytest
 
-from agents.voice import OpenAITTSModel, TTSModelSettings
+try:
+    from agents.voice import OpenAITTSModel, TTSModelSettings
+except ImportError:
+    pass
 
 
 class _FakeStreamResponse:

@@ -1,4 +1,7 @@
-from agents.voice import StreamedAudioResult
+try:
+    from agents.voice import StreamedAudioResult
+except ImportError:
+    pass
 
 
 async def extract_events(result: StreamedAudioResult) -> tuple[list[str], list[bytes]]:

@@ -54,6 +54,7 @@ dev = [
     "sounddevice",
     "pynput",
     "textual",
+    "websockets",
 ]
 [tool.uv.workspace]
 members = ["agents"]
