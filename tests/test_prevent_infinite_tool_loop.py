@@ -54,7 +54,7 @@ class MockModel:
         )
 
 
-class TestToolChoiceReset:
+class TestPreventInfiniteToolLoop:
     async def test_tool_choice_resets_after_call(self):
         """Test that tool_choice is reset to 'auto' after tool call when set to 'required'"""
         # Create an agent with tool_choice="required"
