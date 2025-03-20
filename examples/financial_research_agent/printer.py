@@ -10,6 +10,7 @@ class Printer:
     Simple wrapper to stream status updates. Used by the financial bot
     manager as it orchestrates planning, search and writing.
     """
+
     def __init__(self, console: Console) -> None:
         self.live = Live(console=console)
         self.items: dict[str, tuple[str, bool]] = {}

@@ -42,16 +42,14 @@ class FinancialResearchManager:
                 is_done=True,
                 hide_checkmark=True,
             )
-            self.printer.update_item(
-                "start", "Starting financial research...", is_done=True)
+            self.printer.update_item("start", "Starting financial research...", is_done=True)
             search_plan = await self._plan_searches(query)
             search_results = await self._perform_searches(search_plan)
             report = await self._write_report(query, search_results)
             verification = await self._verify_report(report)
 
             final_report = f"Report summary\n\n{report.short_summary}"
-            self.printer.update_item(
-                "final_report", final_report, is_done=True)
+            self.printer.update_item("final_report", final_report, is_done=True)
 
             self.printer.end()
 
@@ -76,8 +74,7 @@ class FinancialResearchManager:
     async def _perform_searches(self, search_plan: FinancialSearchPlan) -> Sequence[str]:
         with custom_span("Search the web"):
             self.printer.update_item("searching", "Searching...")
-            tasks = [asyncio.create_task(self._search(item))
-                     for item in search_plan.searches]
+            tasks = [asyncio.create_task(self._search(item)) for item in search_plan.searches]
             results: list[str] = []
             num_completed = 0
             for task in asyncio.as_completed(tasks):
@@ -112,8 +109,7 @@ class FinancialResearchManager:
             tool_description="Use to get a short write‑up of potential red flags",
             custom_output_extractor=_summary_extractor,
         )
-        writer_with_tools = writer_agent.clone(
-            tools=[fundamentals_tool, risk_tool])
+        writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
         self.printer.update_item("writing", "Thinking about report...")
         input_data = f"Original query: {query}\nSummarized search results: {search_results}"
         result = Runner.run_streamed(writer_with_tools, input_data)
@@ -126,8 +122,7 @@ class FinancialResearchManager:
         next_message = 0
         async for _ in result.stream_events():
             if time.time() - last_update > 5 and next_message < len(update_messages):
-                self.printer.update_item(
-                    "writing", update_messages[next_message])
+                self.printer.update_item("writing", update_messages[next_message])
                 next_message += 1
                 last_update = time.time()
         self.printer.mark_item_done("writing")

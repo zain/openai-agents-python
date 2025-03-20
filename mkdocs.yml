@@ -35,6 +35,10 @@ nav:
       - multi_agent.md
       - models.md
       - config.md
+      - Voice agents:
+          - voice/quickstart.md
+          - voice/pipeline.md
+          - voice/tracing.md
   - API Reference:
       - Agents:
           - ref/index.md
@@ -67,6 +71,19 @@ nav:
           - ref/tracing/setup.md
           - ref/tracing/span_data.md
           - ref/tracing/util.md
+      - Voice:
+          - ref/voice/pipeline.md
+          - ref/voice/workflow.md
+          - ref/voice/input.md
+          - ref/voice/result.md
+          - ref/voice/pipeline_config.md
+          - ref/voice/events.md
+          - ref/voice/exceptions.md
+          - ref/voice/model.md
+          - ref/voice/utils.md
+          - ref/voice/models/openai_provider.md
+          - ref/voice/models/openai_stt.md
+          - ref/voice/models/openai_tts.md
       - Extensions:
           - ref/extensions/handoff_filters.md
           - ref/extensions/handoff_prompt.md
@@ -96,9 +113,13 @@ extra:
   generator: false
 
 markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
   - attr_list
   - md_in_html
   - pymdownx.highlight:
