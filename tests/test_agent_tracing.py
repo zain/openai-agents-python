@@ -9,7 +9,7 @@ from agents import Agent, RunConfig, Runner, trace
 
 from .fake_model import FakeModel
 from .test_responses import get_text_message
-from .testing_processor import fetch_normalized_spans, fetch_ordered_spans, fetch_traces
+from .testing_processor import fetch_normalized_spans, fetch_traces
 
 
 @pytest.mark.asyncio
