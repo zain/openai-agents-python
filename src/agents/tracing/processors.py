@@ -5,6 +5,7 @@ import queue
 import random
 import threading
 import time
+from functools import cached_property
 from typing import Any
 
 import httpx
@@ -50,9 +51,9 @@ class BackendSpanExporter(TracingExporter):
             base_delay: Base delay (in seconds) for the first backoff.
             max_delay: Maximum delay (in seconds) for backoff growth.
         """
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        self.organization = organization or os.environ.get("OPENAI_ORG_ID")
-        self.project = project or os.environ.get("OPENAI_PROJECT_ID")
+        self._api_key = api_key
+        self._organization = organization
+        self._project = project
         self.endpoint = endpoint
         self.max_retries = max_retries
         self.base_delay = base_delay
@@ -68,7 +69,21 @@ class BackendSpanExporter(TracingExporter):
             api_key: The OpenAI API key to use. This is the same key used by the OpenAI Python
                 client.
         """
+        # We're specifically setting the underlying cached property as well
+        self._api_key = api_key
         self.api_key = api_key
+
+    @cached_property
+    def api_key(self):
+        return self._api_key or os.environ.get("OPENAI_API_KEY")
+
+    @cached_property
+    def organization(self):
+        return self._organization or os.environ.get("OPENAI_ORG_ID")
+
+    @cached_property
+    def project(self):
+        return self._project or os.environ.get("OPENAI_PROJECT_ID")
 
     def export(self, items: list[Trace | Span[Any]]) -> None:
         if not items:
