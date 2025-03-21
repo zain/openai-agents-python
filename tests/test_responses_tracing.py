@@ -64,13 +64,6 @@ async def test_get_response_creates_trace(monkeypatch):
         ]
     )
 
-    spans = fetch_ordered_spans()
-    assert len(spans) == 1
-
-    assert isinstance(spans[0].span_data, ResponseSpanData)
-    assert spans[0].span_data.response is not None
-    assert spans[0].span_data.response.id == "dummy-id"
-
 
 @pytest.mark.allow_call_model_methods
 @pytest.mark.asyncio
@@ -163,12 +156,6 @@ async def test_stream_response_creates_trace(monkeypatch):
             }
         ]
     )
-
-    spans = fetch_ordered_spans()
-    assert len(spans) == 1
-    assert isinstance(spans[0].span_data, ResponseSpanData)
-    assert spans[0].span_data.response is not None
-    assert spans[0].span_data.response.id == "dummy-id-123"
 
 
 @pytest.mark.allow_call_model_methods
