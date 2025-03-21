@@ -91,7 +91,7 @@ agent = Agent(
 We'll set up a simple voice pipeline, using [`SingleAgentVoiceWorkflow`][agents.voice.workflow.SingleAgentVoiceWorkflow] as the workflow.
 
 ```python
-from agents.voice import SingleAgentVoiceWorkflow, VoicePipeline,
+from agents.voice import SingleAgentVoiceWorkflow, VoicePipeline
 pipeline = VoicePipeline(workflow=SingleAgentVoiceWorkflow(agent))
 ```
 
