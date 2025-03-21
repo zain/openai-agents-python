@@ -80,7 +80,7 @@ def fetch_events() -> list[TestSpanProcessorEvent]:
     return SPAN_PROCESSOR_TESTING._events
 
 
-def fetch_normalized_spans():
+def fetch_normalized_spans(keep_span_id: bool = False):
     nodes: dict[tuple[str, str | None], dict[str, Any]] = {}
     traces = []
     for trace_obj in fetch_traces():
@@ -99,7 +99,9 @@ def fetch_normalized_spans():
         span = span_obj.export()
         assert span
         assert span.pop("object") == "trace.span"
-        assert span.pop("id").startswith("span_")
+        assert span["id"].startswith("span_")
+        if not keep_span_id:
+            del span["id"]
         assert datetime.fromisoformat(span.pop("started_at"))
         assert datetime.fromisoformat(span.pop("ended_at"))
         parent_id = span.pop("parent_id")

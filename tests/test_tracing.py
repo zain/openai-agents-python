@@ -4,6 +4,7 @@ import asyncio
 from typing import Any
 
 import pytest
+from inline_snapshot import snapshot
 
 from agents.tracing import (
     Span,
@@ -17,7 +18,13 @@ from agents.tracing import (
 )
 from agents.tracing.spans import SpanError
 
-from .testing_processor import fetch_events, fetch_ordered_spans, fetch_traces
+from .testing_processor import (
+    SPAN_PROCESSOR_TESTING,
+    fetch_events,
+    fetch_normalized_spans,
+    fetch_ordered_spans,
+    fetch_traces,
+)
 
 ### HELPERS
 
@@ -129,11 +136,11 @@ def test_ctxmanager_spans() -> None:
 
 async def run_subtask(span_id: str | None = None) -> None:
     with generation_span(span_id=span_id):
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.0001)
 
 
 async def simple_async_tracing():
-    with trace(workflow_name="test", trace_id="123", group_id="456"):
+    with trace(workflow_name="test", trace_id="trace_123", group_id="group_456"):
         await run_subtask(span_id="span_1")
         await run_subtask(span_id="span_2")
 
@@ -142,21 +149,18 @@ async def simple_async_tracing():
 async def test_async_tracing() -> None:
     await simple_async_tracing()
 
-    spans, traces = fetch_ordered_spans(), fetch_traces()
-    assert len(spans) == 2
-    assert len(traces) == 1
-
-    trace = traces[0]
-    standard_trace_checks(trace, name_check="test")
-    trace_id = trace.trace_id
-
-    # We don't care about ordering here, just that they're there
-    for s in spans:
-        standard_span_checks(s, trace_id=trace_id, parent_id=None, span_type="generation")
-
-    ids = [span.span_id for span in spans]
-    assert "span_1" in ids
-    assert "span_2" in ids
+    assert fetch_normalized_spans(keep_span_id=True) == snapshot(
+        [
+            {
+                "workflow_name": "test",
+                "group_id": "group_456",
+                "children": [
+                    {"type": "generation", "id": "span_1"},
+                    {"type": "generation", "id": "span_2"},
+                ],
+            }
+        ]
+    )
 
 
 async def run_tasks_parallel(span_ids: list[str]) -> None:
@@ -171,13 +175,11 @@ async def run_tasks_as_children(first_span_id: str, second_span_id: str) -> None
 
 
 async def complex_async_tracing():
-    with trace(workflow_name="test", trace_id="123", group_id="456"):
-        await asyncio.sleep(0.01)
+    with trace(workflow_name="test", trace_id="trace_123", group_id="456"):
         await asyncio.gather(
             run_tasks_parallel(["span_1", "span_2"]),
             run_tasks_parallel(["span_3", "span_4"]),
         )
-        await asyncio.sleep(0.01)
         await asyncio.gather(
             run_tasks_as_children("span_5", "span_6"),
             run_tasks_as_children("span_7", "span_8"),
@@ -186,35 +188,34 @@ async def complex_async_tracing():
 
 @pytest.mark.asyncio
 async def test_complex_async_tracing() -> None:
-    await complex_async_tracing()
+    for _ in range(300):
+        SPAN_PROCESSOR_TESTING.clear()
+        await complex_async_tracing()
 
-    spans, traces = fetch_ordered_spans(), fetch_traces()
-    assert len(spans) == 8
-    assert len(traces) == 1
-
-    trace = traces[0]
-    standard_trace_checks(trace, name_check="test")
-    trace_id = trace.trace_id
-
-    # First ensure 1,2,3,4 exist and are in parallel with the trace as parent
-    for span_id in ["span_1", "span_2", "span_3", "span_4"]:
-        span = next((s for s in spans if s.span_id == span_id), None)
-        assert span is not None
-        standard_span_checks(span, trace_id=trace_id, parent_id=None, span_type="generation")
-
-    # Ensure 5 and 7 exist and have the trace as parent
-    for span_id in ["span_5", "span_7"]:
-        span = next((s for s in spans if s.span_id == span_id), None)
-        assert span is not None
-        standard_span_checks(span, trace_id=trace_id, parent_id=None, span_type="generation")
-
-    # Ensure 6 and 8 exist and have 5 and 7 as parents
-    six = next((s for s in spans if s.span_id == "span_6"), None)
-    assert six is not None
-    standard_span_checks(six, trace_id=trace_id, parent_id="span_5", span_type="generation")
-    eight = next((s for s in spans if s.span_id == "span_8"), None)
-    assert eight is not None
-    standard_span_checks(eight, trace_id=trace_id, parent_id="span_7", span_type="generation")
+        assert fetch_normalized_spans(keep_span_id=True) == (
+            [
+                {
+                    "workflow_name": "test",
+                    "group_id": "456",
+                    "children": [
+                        {"type": "generation", "id": "span_1"},
+                        {"type": "generation", "id": "span_2"},
+                        {"type": "generation", "id": "span_3"},
+                        {"type": "generation", "id": "span_4"},
+                        {
+                            "type": "generation",
+                            "id": "span_5",
+                            "children": [{"type": "generation", "id": "span_6"}],
+                        },
+                        {
+                            "type": "generation",
+                            "id": "span_7",
+                            "children": [{"type": "generation", "id": "span_8"}],
+                        },
+                    ],
+                }
+            ]
+        )
 
 
 def spans_with_setters():
