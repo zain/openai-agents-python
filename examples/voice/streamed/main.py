@@ -13,7 +13,13 @@ from typing_extensions import override
 
 from agents.voice import StreamedAudioInput, VoicePipeline
 
-from .agents import MyWorkflow
+# Use absolute import when running as script directly
+try:
+    # First try relative import (for package use)
+    from .my_workflow import MyWorkflow
+except ImportError:
+    # Fall back to direct import (for script use)
+    from my_workflow import MyWorkflow
 
 CHUNK_LENGTH_S = 0.05  # 100ms
 SAMPLE_RATE = 24000
