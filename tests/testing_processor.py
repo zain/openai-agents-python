@@ -80,6 +80,19 @@ def fetch_events() -> list[TestSpanProcessorEvent]:
     return SPAN_PROCESSOR_TESTING._events
 
 
+def assert_no_spans():
+    spans = fetch_ordered_spans()
+    if spans:
+        raise AssertionError(f"Expected 0 spans, got {len(spans)}")
+
+
+def assert_no_traces():
+    traces = fetch_traces()
+    if traces:
+        raise AssertionError(f"Expected 0 traces, got {len(traces)}")
+    assert_no_spans()
+
+
 def fetch_normalized_spans(keep_span_id: bool = False):
     nodes: dict[tuple[str, str | None], dict[str, Any]] = {}
     traces = []
@@ -92,8 +105,7 @@ def fetch_normalized_spans(keep_span_id: bool = False):
         nodes[(trace_obj.trace_id, None)] = trace
         traces.append(trace)
 
-    if not traces:
-        assert not fetch_ordered_spans()
+    assert traces, "Use assert_no_traces() to check for empty traces"
 
     for span_obj in fetch_ordered_spans():
         span = span_obj.export()

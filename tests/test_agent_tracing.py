@@ -9,7 +9,7 @@ from agents import Agent, RunConfig, Runner, trace
 
 from .fake_model import FakeModel
 from .test_responses import get_text_message
-from .testing_processor import fetch_normalized_spans, fetch_traces
+from .testing_processor import assert_no_traces, fetch_normalized_spans, fetch_traces
 
 
 @pytest.mark.asyncio
@@ -164,7 +164,7 @@ async def test_parent_disabled_trace_disabled_agent_trace():
 
         await Runner.run(agent, input="first_test")
 
-    assert fetch_normalized_spans() == snapshot([])
+    assert_no_traces()
 
 
 @pytest.mark.asyncio
@@ -178,7 +178,7 @@ async def test_manual_disabling_works():
 
     await Runner.run(agent, input="first_test", run_config=RunConfig(tracing_disabled=True))
 
-    assert fetch_normalized_spans() == snapshot([])
+    assert_no_traces()
 
 
 @pytest.mark.asyncio
@@ -370,8 +370,7 @@ async def test_parent_disabled_trace_disables_streaming_agent_trace():
         async for _ in x.stream_events():
             pass
 
-    traces = fetch_traces()
-    assert len(traces) == 0, f"Expected 0 traces, got {len(traces)}"
+    assert_no_traces()
 
 
 @pytest.mark.asyncio
@@ -392,5 +391,4 @@ async def test_manual_streaming_disabling_works():
     async for _ in x.stream_events():
         pass
 
-    traces = fetch_traces()
-    assert len(traces) == 0, f"Expected 0 traces, got {len(traces)}"
+    assert_no_traces()

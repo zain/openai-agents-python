@@ -24,6 +24,7 @@ from .testing_processor import (
     fetch_normalized_spans,
     fetch_ordered_spans,
     fetch_traces,
+    assert_no_traces,
 )
 
 ### HELPERS
@@ -281,10 +282,7 @@ def disabled_tracing():
 
 def test_disabled_tracing():
     disabled_tracing()
-
-    spans, traces = fetch_ordered_spans(), fetch_traces()
-    assert len(spans) == 0
-    assert len(traces) == 0
+    assert_no_traces()
 
 
 def enabled_trace_disabled_span():
@@ -374,9 +372,7 @@ async def test_noop_span_doesnt_record():
         with custom_span(name="span_1") as span:
             span.set_error(SpanError(message="test", data={}))
 
-    spans, traces = fetch_ordered_spans(), fetch_traces()
-    assert len(spans) == 0
-    assert len(traces) == 0
+    assert_no_traces()
 
     assert t.export() is None
     assert span.export() is None
