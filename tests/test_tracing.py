@@ -288,7 +288,7 @@ def test_disabled_tracing():
 
 
 def enabled_trace_disabled_span():
-    with trace(workflow_name="test", trace_id="123"):
+    with trace(workflow_name="test", trace_id="trace_123"):
         with agent_span(name="agent_1"):
             with function_span(name="function_1", disabled=True):
                 with generation_span():
@@ -298,17 +298,19 @@ def enabled_trace_disabled_span():
 def test_enabled_trace_disabled_span():
     enabled_trace_disabled_span()
 
-    spans, traces = fetch_ordered_spans(), fetch_traces()
-    assert len(spans) == 1  # Only the agent span is recorded
-    assert len(traces) == 1  # The trace is recorded
-
-    trace = traces[0]
-    standard_trace_checks(trace, name_check="test")
-    trace_id = trace.trace_id
-
-    first_span = spans[0]
-    standard_span_checks(first_span, trace_id=trace_id, parent_id=None, span_type="agent")
-    assert first_span.span_data.name == "agent_1"
+    assert fetch_normalized_spans() == snapshot(
+        [
+            {
+                "workflow_name": "test",
+                "children": [
+                    {
+                        "type": "agent",
+                        "data": {"name": "agent_1"},
+                    }
+                ],
+            }
+        ]
+    )
 
 
 def test_start_and_end_called_manual():
