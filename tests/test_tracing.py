@@ -224,7 +224,7 @@ async def test_complex_async_tracing() -> None:
 
 
 def spans_with_setters():
-    with trace(workflow_name="test", trace_id="123", group_id="456"):
+    with trace(workflow_name="test", trace_id="trace_123", group_id="456"):
         with agent_span(name="agent_1") as span_a:
             span_a.span_data.name = "agent_2"
 
@@ -242,34 +242,33 @@ def spans_with_setters():
 def test_spans_with_setters() -> None:
     spans_with_setters()
 
-    spans, traces = fetch_ordered_spans(), fetch_traces()
-    assert len(spans) == 4
-    assert len(traces) == 1
-
-    trace = traces[0]
-    standard_trace_checks(trace, name_check="test")
-    trace_id = trace.trace_id
-
-    # Check the spans
-    first_span = spans[0]
-    standard_span_checks(first_span, trace_id=trace_id, parent_id=None, span_type="agent")
-    assert first_span.span_data.name == "agent_2"
-
-    second_span = spans[1]
-    standard_span_checks(
-        second_span, trace_id=trace_id, parent_id=first_span.span_id, span_type="function"
-    )
-    assert second_span.span_data.input == "i"
-    assert second_span.span_data.output == "o"
-
-    third_span = spans[2]
-    standard_span_checks(
-        third_span, trace_id=trace_id, parent_id=first_span.span_id, span_type="generation"
-    )
-
-    fourth_span = spans[3]
-    standard_span_checks(
-        fourth_span, trace_id=trace_id, parent_id=first_span.span_id, span_type="handoff"
+    assert fetch_normalized_spans() == snapshot(
+        [
+            {
+                "workflow_name": "test",
+                "group_id": "456",
+                "children": [
+                    {
+                        "type": "agent",
+                        "data": {"name": "agent_2"},
+                        "children": [
+                            {
+                                "type": "function",
+                                "data": {"name": "function_1", "input": "i", "output": "o"},
+                            },
+                            {
+                                "type": "generation",
+                                "data": {"input": [{"foo": "bar"}]},
+                            },
+                            {
+                                "type": "handoff",
+                                "data": {"from_agent": "agent_1", "to_agent": "agent_2"},
+                            },
+                        ],
+                    }
+                ],
+            }
+        ]
     )
 
 
