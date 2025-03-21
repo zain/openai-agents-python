@@ -99,6 +99,7 @@ To customize this default setup, to send traces to alternative or additional bac
 
 ## External tracing processors list
 
+-   [Weights & Biases](https://weave-docs.wandb.ai/guides/integrations/openai_agents)
 -   [Arize-Phoenix](https://docs.arize.com/phoenix/tracing/integrations-tracing/openai-agents-sdk)
 -   [MLflow](https://mlflow.org/docs/latest/tracing/integrations/openai-agent)
 -   [Braintrust](https://braintrust.dev/docs/guides/traces/integrations#openai-agents-sdk)
