@@ -93,14 +93,18 @@ def assert_no_traces():
     assert_no_spans()
 
 
-def fetch_normalized_spans(keep_span_id: bool = False):
+def fetch_normalized_spans(
+    keep_span_id: bool = False, keep_trace_id: bool = False
+) -> list[dict[str, Any]]:
     nodes: dict[tuple[str, str | None], dict[str, Any]] = {}
     traces = []
     for trace_obj in fetch_traces():
         trace = trace_obj.export()
         assert trace
         assert trace.pop("object") == "trace"
-        assert trace.pop("id").startswith("trace_")
+        assert trace["id"].startswith("trace_")
+        if not keep_trace_id:
+            del trace["id"]
         trace = {k: v for k, v in trace.items() if v is not None}
         nodes[(trace_obj.trace_id, None)] = trace
         traces.append(trace)

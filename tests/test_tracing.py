@@ -20,11 +20,9 @@ from agents.tracing.spans import SpanError
 
 from .testing_processor import (
     SPAN_PROCESSOR_TESTING,
+    assert_no_traces,
     fetch_events,
     fetch_normalized_spans,
-    fetch_ordered_spans,
-    fetch_traces,
-    assert_no_traces,
 )
 
 ### HELPERS

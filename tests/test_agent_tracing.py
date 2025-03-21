@@ -9,7 +9,7 @@ from agents import Agent, RunConfig, Runner, trace
 
 from .fake_model import FakeModel
 from .test_responses import get_text_message
-from .testing_processor import assert_no_traces, fetch_normalized_spans, fetch_traces
+from .testing_processor import assert_no_traces, fetch_normalized_spans
 
 
 @pytest.mark.asyncio
@@ -193,16 +193,29 @@ async def test_trace_config_works():
     await Runner.run(
         agent,
         input="first_test",
-        run_config=RunConfig(workflow_name="Foo bar", group_id="123", trace_id="456"),
+        run_config=RunConfig(workflow_name="Foo bar", group_id="123", trace_id="trace_456"),
     )
 
-    traces = fetch_traces()
-    assert len(traces) == 1, f"Expected 1 trace, got {len(traces)}"
-    export = traces[0].export()
-    assert export is not None, "Trace export should not be None"
-    assert export["workflow_name"] == "Foo bar"
-    assert export["group_id"] == "123"
-    assert export["id"] == "456"
+    assert fetch_normalized_spans(keep_trace_id=True) == snapshot(
+        [
+            {
+                "id": "trace_456",
+                "workflow_name": "Foo bar",
+                "group_id": "123",
+                "children": [
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -259,8 +272,24 @@ async def test_streaming_single_run_is_single_trace():
     async for _ in x.stream_events():
         pass
 
-    traces = fetch_traces()
-    assert len(traces) == 1, f"Expected 1 trace, got {len(traces)}"
+    assert fetch_normalized_spans() == snapshot(
+        [
+            {
+                "workflow_name": "Agent workflow",
+                "children": [
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    }
+                ],
+            }
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -285,8 +314,38 @@ async def test_multiple_streamed_runs_are_multiple_traces():
     async for _ in x.stream_events():
         pass
 
-    traces = fetch_traces()
-    assert len(traces) == 2, f"Expected 2 traces, got {len(traces)}"
+    assert fetch_normalized_spans() == snapshot(
+        [
+            {
+                "workflow_name": "Agent workflow",
+                "children": [
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent_1",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    }
+                ],
+            },
+            {
+                "workflow_name": "Agent workflow",
+                "children": [
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent_1",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    }
+                ],
+            },
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -317,8 +376,42 @@ async def test_wrapped_streaming_trace_is_single_trace():
         async for _ in x.stream_events():
             pass
 
-    traces = fetch_traces()
-    assert len(traces) == 1, f"Expected 1 trace, got {len(traces)}"
+    assert fetch_normalized_spans() == snapshot(
+        [
+            {
+                "workflow_name": "test_workflow",
+                "children": [
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent_1",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    },
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent_1",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    },
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent_1",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    },
+                ],
+            }
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -347,8 +440,42 @@ async def test_wrapped_mixed_trace_is_single_trace():
         async for _ in x.stream_events():
             pass
 
-    traces = fetch_traces()
-    assert len(traces) == 1, f"Expected 1 trace, got {len(traces)}"
+    assert fetch_normalized_spans() == snapshot(
+        [
+            {
+                "workflow_name": "test_workflow",
+                "children": [
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent_1",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    },
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent_1",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    },
+                    {
+                        "type": "agent",
+                        "data": {
+                            "name": "test_agent_1",
+                            "handoffs": [],
+                            "tools": [],
+                            "output_type": "str",
+                        },
+                    },
+                ],
+            }
+        ]
+    )
 
 
 @pytest.mark.asyncio

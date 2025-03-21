@@ -7,7 +7,7 @@ from agents import ModelSettings, ModelTracing, OpenAIResponsesModel, trace
 from agents.tracing.span_data import ResponseSpanData
 from tests import fake_model
 
-from .testing_processor import fetch_normalized_spans, fetch_ordered_spans, assert_no_spans
+from .testing_processor import assert_no_spans, fetch_normalized_spans, fetch_ordered_spans
 
 
 class DummyTracing:
@@ -116,6 +116,7 @@ async def test_disable_tracing_does_not_create_span(monkeypatch):
     assert fetch_normalized_spans() == snapshot([{"workflow_name": "test"}])
 
     assert_no_spans()
+
 
 @pytest.mark.allow_call_model_methods
 @pytest.mark.asyncio
