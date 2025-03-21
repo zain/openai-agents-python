@@ -91,7 +91,7 @@ agent = Agent(
 We'll set up a simple voice pipeline, using [`SingleAgentVoiceWorkflow`][agents.voice.workflow.SingleAgentVoiceWorkflow] as the workflow.
 
 ```python
-from agents.voice import SingleAgentVoiceWorkflow, VoicePipeline,
+from agents.voice import SingleAgentVoiceWorkflow, VoicePipeline
 pipeline = VoicePipeline(workflow=SingleAgentVoiceWorkflow(agent))
 ```
 
@@ -100,10 +100,13 @@ pipeline = VoicePipeline(workflow=SingleAgentVoiceWorkflow(agent))
 ```python
 import numpy as np
 import sounddevice as sd
+from agents.voice import AudioInput
 
 # For simplicity, we'll just create 3 seconds of silence
 # In reality, you'd get microphone data
 audio = np.zeros(24000 * 3, dtype=np.int16)
+audio_input = AudioInput(buffer=buffer)
+
 result = await pipeline.run(audio_input)
 
 # Create an audio player using `sounddevice`
