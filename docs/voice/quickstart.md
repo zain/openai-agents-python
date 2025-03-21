@@ -5,7 +5,7 @@
 Make sure you've followed the base [quickstart instructions](../quickstart.md) for the Agents SDK, and set up a virtual environment. Then, install the optional voice dependencies from the SDK:
 
 ```bash
-pip install openai-agents[voice]
+pip install 'openai-agents[voice]'
 ```
 
 ## Concepts
