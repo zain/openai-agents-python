@@ -54,7 +54,7 @@ def simple_tracing():
     x = trace("test")
     x.start()
 
-    span_1 = agent_span(name="agent_1", parent=x)
+    span_1 = agent_span(name="agent_1", span_id="span_1", parent=x)
     span_1.start()
     span_1.finish()
 
@@ -73,33 +73,36 @@ def simple_tracing():
 def test_simple_tracing() -> None:
     simple_tracing()
 
-    spans, traces = fetch_ordered_spans(), fetch_traces()
-    assert len(spans) == 3
-    assert len(traces) == 1
-
-    trace = traces[0]
-    standard_trace_checks(trace, name_check="test")
-    trace_id = trace.trace_id
-
-    first_span = spans[0]
-    standard_span_checks(first_span, trace_id=trace_id, parent_id=None, span_type="agent")
-    assert first_span.span_data.name == "agent_1"
-
-    second_span = spans[1]
-    standard_span_checks(second_span, trace_id=trace_id, parent_id=None, span_type="custom")
-    assert second_span.span_id == "span_2"
-    assert second_span.span_data.name == "custom_1"
-
-    third_span = spans[2]
-    standard_span_checks(
-        third_span, trace_id=trace_id, parent_id=second_span.span_id, span_type="custom"
+    assert fetch_normalized_spans(keep_span_id=True) == snapshot(
+        [
+            {
+                "workflow_name": "test",
+                "children": [
+                    {
+                        "type": "agent",
+                        "id": "span_1",
+                        "data": {"name": "agent_1"},
+                    },
+                    {
+                        "type": "custom",
+                        "id": "span_2",
+                        "data": {"name": "custom_1", "data": {}},
+                        "children": [
+                            {
+                                "type": "custom",
+                                "id": "span_3",
+                                "data": {"name": "custom_2", "data": {}},
+                            }
+                        ],
+                    },
+                ],
+            }
+        ]
     )
-    assert third_span.span_id == "span_3"
-    assert third_span.span_data.name == "custom_2"
 
 
 def ctxmanager_spans():
-    with trace(workflow_name="test", trace_id="123", group_id="456"):
+    with trace(workflow_name="test", trace_id="trace_123", group_id="456"):
         with custom_span(name="custom_1", span_id="span_1"):
             with custom_span(name="custom_2", span_id="span_1_inner"):
                 pass
@@ -111,27 +114,29 @@ def ctxmanager_spans():
 def test_ctxmanager_spans() -> None:
     ctxmanager_spans()
 
-    spans, traces = fetch_ordered_spans(), fetch_traces()
-    assert len(spans) == 3
-    assert len(traces) == 1
-
-    trace = traces[0]
-    standard_trace_checks(trace, name_check="test")
-    trace_id = trace.trace_id
-
-    first_span = spans[0]
-    standard_span_checks(first_span, trace_id=trace_id, parent_id=None, span_type="custom")
-    assert first_span.span_id == "span_1"
-
-    first_inner_span = spans[1]
-    standard_span_checks(
-        first_inner_span, trace_id=trace_id, parent_id=first_span.span_id, span_type="custom"
+    assert fetch_normalized_spans(keep_span_id=True) == snapshot(
+        [
+            {
+                "workflow_name": "test",
+                "group_id": "456",
+                "children": [
+                    {
+                        "type": "custom",
+                        "id": "span_1",
+                        "data": {"name": "custom_1", "data": {}},
+                        "children": [
+                            {
+                                "type": "custom",
+                                "id": "span_1_inner",
+                                "data": {"name": "custom_2", "data": {}},
+                            }
+                        ],
+                    },
+                    {"type": "custom", "id": "span_2", "data": {"name": "custom_2", "data": {}}},
+                ],
+            }
+        ]
     )
-    assert first_inner_span.span_id == "span_1_inner"
-
-    second_span = spans[2]
-    standard_span_checks(second_span, trace_id=trace_id, parent_id=None, span_type="custom")
-    assert second_span.span_id == "span_2"
 
 
 async def run_subtask(span_id: str | None = None) -> None:
