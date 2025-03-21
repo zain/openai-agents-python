@@ -109,3 +109,4 @@ To customize this default setup, to send traces to alternative or additional bac
 -   [LangSmith](https://docs.smith.langchain.com/observability/how_to_guides/trace_with_openai_agents_sdk)
 -   [Maxim AI](https://www.getmaxim.ai/docs/observe/integrations/openai-agents-sdk)
 -   [Comet Opik](https://www.comet.com/docs/opik/tracing/integrations/openai_agents)
+-   [Langfuse](https://langfuse.com/docs/integrations/openaiagentssdk/openai-agents)
