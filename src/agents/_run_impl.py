@@ -670,7 +670,7 @@ class RunImpl:
             elif isinstance(item, HandoffCallItem):
                 event = RunItemStreamEvent(item=item, name="handoff_requested")
             elif isinstance(item, HandoffOutputItem):
-                event = RunItemStreamEvent(item=item, name="handoff_occurred")
+                event = RunItemStreamEvent(item=item, name="handoff_occured")
             elif isinstance(item, ToolCallItem):
                 event = RunItemStreamEvent(item=item, name="tool_called")
             elif isinstance(item, ToolCallOutputItem):
