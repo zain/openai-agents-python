@@ -213,19 +213,25 @@ class RunImpl:
             tools = agent.tools
             # Only reset in the problematic scenarios where loops are likely unintentional
             if cls._should_reset_tool_choice(agent.model_settings, tools):
-                agent.model_settings = dataclasses.replace(
+                # Create a modified copy instead of modifying the original agent
+                new_model_settings = dataclasses.replace(
                     agent.model_settings,
                     tool_choice="auto"
                 )
+                # Create a new internal agent with updated settings
+                agent = dataclasses.replace(agent, model_settings=new_model_settings)
 
             if (
                 run_config.model_settings and
                 cls._should_reset_tool_choice(run_config.model_settings, tools)
             ):
-                run_config.model_settings = dataclasses.replace(
+                # Also update the run_config model settings with a copy
+                new_run_config_settings = dataclasses.replace(
                     run_config.model_settings,
                     tool_choice="auto"
                 )
+                # Create a new run_config with the new settings
+                run_config = dataclasses.replace(run_config, model_settings=new_run_config_settings)
 
         # Second, check if there are any handoffs
         if run_handoffs := processed_response.handoffs:
