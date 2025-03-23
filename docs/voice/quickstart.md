@@ -104,7 +104,7 @@ from agents.voice import AudioInput
 
 # For simplicity, we'll just create 3 seconds of silence
 # In reality, you'd get microphone data
-audio = np.zeros(24000 * 3, dtype=np.int16)
+buffer = np.zeros(24000 * 3, dtype=np.int16)
 audio_input = AudioInput(buffer=buffer)
 
 result = await pipeline.run(audio_input)
