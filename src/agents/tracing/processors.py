@@ -117,18 +117,22 @@ class BackendSpanExporter(TracingExporter):
 
                 # If the response is a client error (4xx), we wont retry
                 if 400 <= response.status_code < 500:
-                    logger.error(f"Tracing client error {response.status_code}: {response.text}")
+                    logger.error(
+                        f"[non-fatal] Tracing client error {response.status_code}: {response.text}"
+                    )
                     return
 
                 # For 5xx or other unexpected codes, treat it as transient and retry
-                logger.warning(f"Server error {response.status_code}, retrying.")
+                logger.warning(
+                    f"[non-fatal] Tracing: server error {response.status_code}, retrying."
+                )
             except httpx.RequestError as exc:
                 # Network or other I/O error, we'll retry
-                logger.warning(f"Request failed: {exc}")
+                logger.warning(f"[non-fatal] Tracing: request failed: {exc}")
 
             # If we reach here, we need to retry or give up
             if attempt >= self.max_retries:
-                logger.error("Max retries reached, giving up on this batch.")
+                logger.error("[non-fatal] Tracing: max retries reached, giving up on this batch.")
                 return
 
             # Exponential backoff + jitter
