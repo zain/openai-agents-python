@@ -1,3 +1,5 @@
+from typing import Optional
+
 import graphviz
 
 from agents import Agent
@@ -20,8 +22,6 @@ def get_main_graph(agent: Agent) -> str:
         graph [splines=true];
         node [fontname="Arial"];
         edge [penwidth=1.5];
-        "__start__" [shape=ellipse, style=filled, fillcolor=lightblue];
-        "__end__" [shape=ellipse, style=filled, fillcolor=lightblue];
     """
     ]
     parts.append(get_all_nodes(agent))
@@ -29,8 +29,6 @@ def get_main_graph(agent: Agent) -> str:
     parts.append("}")
     return "".join(parts)
 
-
-from typing import Optional
 
 def get_all_nodes(agent: Agent, parent: Optional[Agent] = None) -> str:
     """
@@ -59,12 +57,14 @@ def get_all_nodes(agent: Agent, parent: Optional[Agent] = None) -> str:
     for handoff in agent.handoffs:
         if isinstance(handoff, Handoff):
             parts.append(
-                f'"{handoff.agent_name}" [label="{handoff.agent_name}", shape=box, style=filled, style=rounded, '
+                f'"{handoff.agent_name}" [label="{handoff.agent_name}", shape=box, '
+                f"shape=box, style=filled, style=rounded, "
                 f"fillcolor=lightyellow, width=1.5, height=0.8];"
             )
         if isinstance(handoff, Agent):
             parts.append(
-                f'"{handoff.name}" [label="{handoff.name}", shape=box, style=filled, style=rounded, '
+                f'"{handoff.name}" [label="{handoff.name}", '
+                f"shape=box, style=filled, style=rounded, "
                 f"fillcolor=lightyellow, width=1.5, height=0.8];"
             )
             parts.append(get_all_nodes(handoff))
@@ -85,18 +85,10 @@ def get_all_edges(agent: Agent, parent: Optional[Agent] = None) -> str:
     """
     parts = []
 
-    if not parent:
-        parts.append(f"""
-        "__start__" -> "{agent.name}";""")
-
     for tool in agent.tools:
         parts.append(f"""
         "{agent.name}" -> "{tool.name}" [style=dotted, penwidth=1.5];
         "{tool.name}" -> "{agent.name}" [style=dotted, penwidth=1.5];""")
-
-    if not agent.handoffs:
-        parts.append(f"""
-        "{agent.name}" -> "__end__";""")
 
     for handoff in agent.handoffs:
         if isinstance(handoff, Handoff):
@@ -109,8 +101,6 @@ def get_all_edges(agent: Agent, parent: Optional[Agent] = None) -> str:
 
     return "".join(parts)
 
-
-from typing import Optional
 
 def draw_graph(agent: Agent, filename: Optional[str] = None) -> graphviz.Source:
     """

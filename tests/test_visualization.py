@@ -10,6 +10,7 @@ from agents.extensions.visualization import (
     get_all_nodes,
     get_main_graph,
 )
+from agents.handoffs import Handoff
 
 
 @pytest.fixture
@@ -19,10 +20,8 @@ def mock_agent():
     tool2 = Mock()
     tool2.name = "Tool2"
 
-    handoff1 = Mock()
-    handoff1.name = "Handoff1"
-    handoff1.tools = []
-    handoff1.handoffs = []
+    handoff1 = Mock(spec=Handoff)
+    handoff1.agent_name = "Handoff1"
 
     agent = Mock(spec=Agent)
     agent.name = "Agent1"
@@ -34,12 +33,11 @@ def mock_agent():
 
 def test_get_main_graph(mock_agent):
     result = get_main_graph(mock_agent)
+    print(result)
     assert "digraph G" in result
     assert "graph [splines=true];" in result
     assert 'node [fontname="Arial"];' in result
     assert "edge [penwidth=1.5];" in result
-    assert '"__start__" [shape=ellipse, style=filled, fillcolor=lightblue];' in result
-    assert '"__end__" [shape=ellipse, style=filled, fillcolor=lightblue];' in result
     assert (
         '"Agent1" [label="Agent1", shape=box, style=filled, '
         "fillcolor=lightyellow, width=1.5, height=0.8];" in result
@@ -80,13 +78,11 @@ def test_get_all_nodes(mock_agent):
 
 def test_get_all_edges(mock_agent):
     result = get_all_edges(mock_agent)
-    assert '"__start__" -> "Agent1";' in result
     assert '"Agent1" -> "Tool1" [style=dotted, penwidth=1.5];' in result
     assert '"Tool1" -> "Agent1" [style=dotted, penwidth=1.5];' in result
     assert '"Agent1" -> "Tool2" [style=dotted, penwidth=1.5];' in result
     assert '"Tool2" -> "Agent1" [style=dotted, penwidth=1.5];' in result
     assert '"Agent1" -> "Handoff1";' in result
-    assert '"Handoff1" -> "__end__";' in result
 
 
 def test_draw_graph(mock_agent):
@@ -96,8 +92,6 @@ def test_draw_graph(mock_agent):
     assert "graph [splines=true];" in graph.source
     assert 'node [fontname="Arial"];' in graph.source
     assert "edge [penwidth=1.5];" in graph.source
-    assert '"__start__" [shape=ellipse, style=filled, fillcolor=lightblue];' in graph.source
-    assert '"__end__" [shape=ellipse, style=filled, fillcolor=lightblue];' in graph.source
     assert (
         '"Agent1" [label="Agent1", shape=box, style=filled, '
         "fillcolor=lightyellow, width=1.5, height=0.8];" in graph.source
