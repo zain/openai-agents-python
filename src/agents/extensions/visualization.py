@@ -45,10 +45,10 @@ def get_all_nodes(agent: Agent, parent: Optional[Agent] = None) -> str:
 
     # Start and end the graph
     parts.append(
-        f'"__start__" [label="__start__", shape=ellipse, style=filled, '
-        f"fillcolor=lightblue, width=0.5, height=0.3];"
-        f'"__end__" [label="__end__", shape=ellipse, style=filled, '
-        f"fillcolor=lightblue, width=0.5, height=0.3];"
+        '"__start__" [label="__start__", shape=ellipse, style=filled, '
+        "fillcolor=lightblue, width=0.5, height=0.3];"
+        '"__end__" [label="__end__", shape=ellipse, style=filled, '
+        "fillcolor=lightblue, width=0.5, height=0.3];"
     )
     # Ensure parent agent node is colored
     if not parent:
@@ -95,9 +95,7 @@ def get_all_edges(agent: Agent, parent: Optional[Agent] = None) -> str:
     parts = []
 
     if not parent:
-        parts.append(
-        f'"__start__" -> "{agent.name}";'
-        )
+        parts.append(f'"__start__" -> "{agent.name}";')
 
     for tool in agent.tools:
         parts.append(f"""
@@ -114,9 +112,7 @@ def get_all_edges(agent: Agent, parent: Optional[Agent] = None) -> str:
             parts.append(get_all_edges(handoff, agent))
 
     if not agent.handoffs and not isinstance(agent, Tool):
-        parts.append(
-        f'"{agent.name}" -> "__end__";'
-        )
+        parts.append(f'"{agent.name}" -> "__end__";')
 
     return "".join(parts)
 

@@ -103,7 +103,6 @@ def test_get_all_edges(mock_agent):
     assert '"Agent1" -> "Handoff1";' in result
 
 
-
 def test_draw_graph(mock_agent):
     graph = draw_graph(mock_agent)
     assert isinstance(graph, graphviz.Source)
