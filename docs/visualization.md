@@ -7,7 +7,7 @@ Agent visualization allows you to generate a structured graphical representation
 The visualization functionality relies on the **Graphviz** package. To use it, ensure you have Graphviz installed and add it as a dependency in `pyproject.toml`. Alternatively, install it directly via pip:
 
 ```bash
-pip install openai-agents[visualization]
+pip install openai-agents[viz]
 ```
 
 ## Generating a Graph
