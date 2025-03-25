@@ -1,9 +1,9 @@
 import asyncio
-import os
 import shutil
 
 from agents import Agent, Runner, trace
 from agents.mcp import MCPServer, MCPServerStdio
+
 
 async def run(mcp_server: MCPServer, directory_path: str):
     agent = Agent(
@@ -12,13 +12,13 @@ async def run(mcp_server: MCPServer, directory_path: str):
         mcp_servers=[mcp_server],
     )
 
-    message = f"Who's the most frequent contributor?"
+    message = "Who's the most frequent contributor?"
     print("\n" + "-" * 40)
     print(f"Running: {message}")
     result = await Runner.run(starting_agent=agent, input=message)
     print(result.final_output)
 
-    message = f"Summarize the last change in the repository."
+    message = "Summarize the last change in the repository."
     print("\n" + "-" * 40)
     print(f"Running: {message}")
     result = await Runner.run(starting_agent=agent, input=message)
