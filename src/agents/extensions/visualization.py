@@ -57,7 +57,7 @@ def get_all_nodes(agent: Agent, parent: Optional[Agent] = None) -> str:
     for handoff in agent.handoffs:
         if isinstance(handoff, Handoff):
             parts.append(
-                f'"{handoff.agent_name}" [label="{handoff.agent_name}", shape=box, '
+                f'"{handoff.agent_name}" [label="{handoff.agent_name}", '
                 f"shape=box, style=filled, style=rounded, "
                 f"fillcolor=lightyellow, width=1.5, height=0.8];"
             )
