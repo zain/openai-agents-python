@@ -16,6 +16,10 @@ class CrashingClientSessionServer(_MCPServerWithClientSession):
         self.cleanup_called = True
         await super().cleanup()
 
+    @property
+    def name(self) -> str:
+        return "crashing_client_session_server"
+
 
 @pytest.mark.asyncio
 async def test_server_errors_cause_error_and_cleanup_called():

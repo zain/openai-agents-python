@@ -7,8 +7,6 @@ from typing import Any, cast
 
 from openai.types.responses import ResponseCompletedEvent
 
-from agents.tool import Tool
-
 from ._run_impl import (
     AgentToolUseTracker,
     NextStepFinalOutput,
@@ -40,6 +38,7 @@ from .models.openai_provider import OpenAIProvider
 from .result import RunResult, RunResultStreaming
 from .run_context import RunContextWrapper, TContext
 from .stream_events import AgentUpdatedStreamEvent, RawResponsesStreamEvent
+from .tool import Tool
 from .tracing import Span, SpanError, agent_span, get_current_trace, trace
 from .tracing.span_data import AgentSpanData
 from .usage import Usage
@@ -182,8 +181,6 @@ class Runner:
                     # agent changes, or if the agent loop ends.
                     if current_span is None:
                         handoff_names = [h.agent_name for h in cls._get_handoffs(current_agent)]
-                        all_tools = await cls._get_all_tools(current_agent)
-                        tool_names = [t.name for t in all_tools]
                         if output_schema := cls._get_output_schema(current_agent):
                             output_type_name = output_schema.output_type_name()
                         else:
@@ -192,10 +189,12 @@ class Runner:
                         current_span = agent_span(
                             name=current_agent.name,
                             handoffs=handoff_names,
-                            tools=tool_names,
                             output_type=output_type_name,
                         )
                         current_span.start(mark_as_current=True)
+
+                        all_tools = await cls._get_all_tools(current_agent)
+                        current_span.span_data.tools = [t.name for t in all_tools]
 
                     current_turn += 1
                     if current_turn > max_turns:
@@ -504,7 +503,6 @@ class Runner:
                 # agent changes, or if the agent loop ends.
                 if current_span is None:
                     handoff_names = [h.agent_name for h in cls._get_handoffs(current_agent)]
-                    tool_names = [t.name for t in current_agent.tools]
                     if output_schema := cls._get_output_schema(current_agent):
                         output_type_name = output_schema.output_type_name()
                     else:
@@ -513,11 +511,13 @@ class Runner:
                     current_span = agent_span(
                         name=current_agent.name,
                         handoffs=handoff_names,
-                        tools=tool_names,
                         output_type=output_type_name,
                     )
                     current_span.start(mark_as_current=True)
 
+                    all_tools = await cls._get_all_tools(current_agent)
+                    tool_names = [t.name for t in all_tools]
+                    current_span.span_data.tools = tool_names
                 current_turn += 1
                 streamed_result.current_turn = current_turn
 
@@ -553,6 +553,7 @@ class Runner:
                         run_config,
                         should_run_agent_start_hooks,
                         tool_use_tracker,
+                        all_tools,
                     )
                     should_run_agent_start_hooks = False
 
@@ -621,6 +622,7 @@ class Runner:
         run_config: RunConfig,
         should_run_agent_start_hooks: bool,
         tool_use_tracker: AgentToolUseTracker,
+        all_tools: list[Tool],
     ) -> SingleStepResult:
         if should_run_agent_start_hooks:
             await asyncio.gather(
@@ -640,7 +642,6 @@ class Runner:
         system_prompt = await agent.get_system_prompt(context_wrapper)
 
         handoffs = cls._get_handoffs(agent)
-        all_tools = await cls._get_all_tools(agent)
         model = cls._get_model(agent, run_config)
         model_settings = agent.model_settings.resolve(run_config.model_settings)
         model_settings = RunImpl.maybe_reset_tool_choice(agent, tool_use_tracker, model_settings)

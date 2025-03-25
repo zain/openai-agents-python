@@ -52,3 +52,7 @@ class FakeMCPServer(MCPServer):
         return CallToolResult(
             content=[TextContent(text=self.tool_results[-1], type="text")],
         )
+
+    @property
+    def name(self) -> str:
+        return "fake_mcp_server"
