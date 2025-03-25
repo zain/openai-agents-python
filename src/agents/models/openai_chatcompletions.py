@@ -54,7 +54,7 @@ from openai.types.responses import (
     ResponseUsage,
 )
 from openai.types.responses.response_input_param import FunctionCallOutput, ItemReference, Message
-from openai.types.responses.response_usage import OutputTokensDetails
+from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 
 from .. import _debug
 from ..agent_output import AgentOutputSchema
@@ -420,6 +420,11 @@ class OpenAIChatCompletionsModel(Model):
                         and usage.completion_tokens_details.reasoning_tokens
                         else 0
                     ),
+                    input_tokens_details=InputTokensDetails(
+                        cached_tokens=usage.prompt_tokens_details.cached_tokens
+                        if usage.prompt_tokens_details and usage.prompt_tokens_details.cached_tokens
+                        else 0
+                    ),
                 )
                 if usage
                 else None
@@ -752,7 +757,7 @@ class _Converter:
             elif isinstance(c, dict) and c.get("type") == "input_file":
                 raise UserError(f"File uploads are not supported for chat completions {c}")
             else:
-                raise UserError(f"Unknonw content: {c}")
+                raise UserError(f"Unknown content: {c}")
         return out
 
     @classmethod

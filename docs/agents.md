@@ -130,3 +130,23 @@ robot_agent = pirate_agent.clone(
     instructions="Write like a robot",
 )
 ```
+
+## Forcing tool use
+
+Supplying a list of tools doesn't always mean the LLM will use a tool. You can force tool use by setting [`ModelSettings.tool_choice`][agents.model_settings.ModelSettings.tool_choice]. Valid values are:
+
+1. `auto`, which allows the LLM to decide whether or not to use a tool.
+2. `required`, which requires the LLM to use a tool (but it can intelligently decide which tool).
+3. `none`, which requires the LLM to _not_ use a tool.
+4. Setting a specific string e.g. `my_tool`, which requires the LLM to use that specific tool.
+
+!!! note
+
+    To prevent infinite loops, the framework automatically resets `tool_choice` to "auto" after a tool call in the following scenarios:
+    
+    1. When `tool_choice` is set to a specific function name (any string that's not "auto", "required", or "none")
+    2. When `tool_choice` is set to "required" AND there is only one tool available
+    
+    This targeted reset mechanism allows the model to decide whether to make additional tool calls in subsequent turns while avoiding infinite loops in these specific cases.
+    
+    If you want the Agent to completely stop after a tool call (rather than continuing with auto mode), you can set [`Agent.tool_use_behavior="stop_on_first_tool"`] which will directly use the tool output as the final response without further LLM processing.
