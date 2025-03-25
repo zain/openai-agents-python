@@ -72,7 +72,7 @@ def get_all_nodes(agent: Agent, parent: Optional[Agent] = None) -> str:
     return "".join(parts)
 
 
-def get_all_edges(agent: Agent, parent: Optional[Agent] = None) -> str:
+def get_all_edges(agent: Agent) -> str:
     """
     Recursively generates the edges for the given agent and its handoffs in DOT format.
 
@@ -97,7 +97,7 @@ def get_all_edges(agent: Agent, parent: Optional[Agent] = None) -> str:
         if isinstance(handoff, Agent):
             parts.append(f"""
             "{agent.name}" -> "{handoff.name}";""")
-            parts.append(get_all_edges(handoff, agent))
+            parts.append(get_all_edges(handoff))
 
     return "".join(parts)
 
