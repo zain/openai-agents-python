@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-import graphviz
+import graphviz  # type: ignore
 import pytest
 
 from agents import Agent

@@ -1,6 +1,6 @@
 from typing import Optional
 
-import graphviz
+import graphviz  # type: ignore
 
 from agents import Agent
 from agents.handoffs import Handoff
