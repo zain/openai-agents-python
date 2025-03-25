@@ -35,6 +35,7 @@ nav:
       - multi_agent.md
       - models.md
       - config.md
+      - visualization.md
       - Voice agents:
           - voice/quickstart.md
           - voice/pipeline.md
