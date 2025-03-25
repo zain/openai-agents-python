@@ -142,6 +142,3 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
-# Jupyter Notebook
-*.ipynb
