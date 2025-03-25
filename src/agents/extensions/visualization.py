@@ -4,6 +4,7 @@ import graphviz  # type: ignore
 
 from agents import Agent
 from agents.handoffs import Handoff
+from agents.tool import Tool
 
 
 def get_main_graph(agent: Agent) -> str:
@@ -41,6 +42,14 @@ def get_all_nodes(agent: Agent, parent: Optional[Agent] = None) -> str:
         str: The DOT format string representing the nodes.
     """
     parts = []
+
+    # Start and end the graph
+    parts.append(
+        f'"__start__" [label="__start__", shape=ellipse, style=filled, '
+        f"fillcolor=lightblue, width=0.5, height=0.3];"
+        f'"__end__" [label="__end__", shape=ellipse, style=filled, '
+        f"fillcolor=lightblue, width=0.5, height=0.3];"
+    )
     # Ensure parent agent node is colored
     if not parent:
         parts.append(
@@ -72,7 +81,7 @@ def get_all_nodes(agent: Agent, parent: Optional[Agent] = None) -> str:
     return "".join(parts)
 
 
-def get_all_edges(agent: Agent) -> str:
+def get_all_edges(agent: Agent, parent: Optional[Agent] = None) -> str:
     """
     Recursively generates the edges for the given agent and its handoffs in DOT format.
 
@@ -84,6 +93,11 @@ def get_all_edges(agent: Agent) -> str:
         str: The DOT format string representing the edges.
     """
     parts = []
+
+    if not parent:
+        parts.append(
+        f'"__start__" -> "{agent.name}";'
+        )
 
     for tool in agent.tools:
         parts.append(f"""
@@ -97,7 +111,12 @@ def get_all_edges(agent: Agent) -> str:
         if isinstance(handoff, Agent):
             parts.append(f"""
             "{agent.name}" -> "{handoff.name}";""")
-            parts.append(get_all_edges(handoff))
+            parts.append(get_all_edges(handoff, agent))
+
+    if not agent.handoffs and not isinstance(agent, Tool):
+        parts.append(
+        f'"{agent.name}" -> "__end__";'
+        )
 
     return "".join(parts)
 
