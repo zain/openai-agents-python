@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import inspect
 from collections.abc import Awaitable
 from dataclasses import dataclass
@@ -47,10 +48,11 @@ from .items import (
 )
 from .lifecycle import RunHooks
 from .logger import logger
+from .model_settings import ModelSettings
 from .models.interface import ModelTracing
 from .run_context import RunContextWrapper, TContext
 from .stream_events import RunItemStreamEvent, StreamEvent
-from .tool import ComputerTool, FunctionTool, FunctionToolResult
+from .tool import ComputerTool, FunctionTool, FunctionToolResult, Tool
 from .tracing import (
     SpanError,
     Trace,
@@ -206,6 +208,29 @@ class RunImpl:
         new_step_items.extend([result.run_item for result in function_results])
         new_step_items.extend(computer_results)
 
+        # Reset tool_choice to "auto" after tool execution to prevent infinite loops
+        if processed_response.functions or processed_response.computer_actions:
+            tools = agent.tools
+
+            if (
+                run_config.model_settings and
+                cls._should_reset_tool_choice(run_config.model_settings, tools)
+            ):
+                # update the run_config model settings with a copy
+                new_run_config_settings = dataclasses.replace(
+                    run_config.model_settings,
+                    tool_choice="auto"
+                )
+                run_config = dataclasses.replace(run_config, model_settings=new_run_config_settings)
+
+            if cls._should_reset_tool_choice(agent.model_settings, tools):
+                # Create a modified copy instead of modifying the original agent
+                new_model_settings = dataclasses.replace(
+                    agent.model_settings,
+                    tool_choice="auto"
+                )
+                agent = dataclasses.replace(agent, model_settings=new_model_settings)
+
         # Second, check if there are any handoffs
         if run_handoffs := processed_response.handoffs:
             return await cls.execute_handoffs(
@@ -295,6 +320,24 @@ class RunImpl:
                 new_step_items=new_step_items,
                 next_step=NextStepRunAgain(),
             )
+
+    @classmethod
+    def _should_reset_tool_choice(cls, model_settings: ModelSettings, tools: list[Tool]) -> bool:
+        if model_settings is None or model_settings.tool_choice is None:
+            return False
+
+        # for specific tool choices
+        if (
+            isinstance(model_settings.tool_choice, str) and
+            model_settings.tool_choice not in ["auto", "required", "none"]
+        ):
+            return True
+
+        # for one tool and required tool choice
+        if model_settings.tool_choice == "required":
+            return len(tools) == 1
+
+        return False
 
     @classmethod
     def process_model_response(
