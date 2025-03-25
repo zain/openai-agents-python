@@ -208,8 +208,10 @@ class OpenAIResponsesModel(Model):
         list_input = ItemHelpers.input_to_new_input_list(input)
 
         parallel_tool_calls = (
-            True if model_settings.parallel_tool_calls and tools and len(tools) > 0
-            else False if model_settings.parallel_tool_calls is False
+            True
+            if model_settings.parallel_tool_calls and tools and len(tools) > 0
+            else False
+            if model_settings.parallel_tool_calls is False
             else NOT_GIVEN
         )
 
