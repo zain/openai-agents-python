@@ -4,10 +4,10 @@ Agent visualization allows you to generate a structured graphical representation
 
 ## Installation
 
-The visualization functionality relies on the **Graphviz** package. To use it, ensure you have Graphviz installed and add it as a dependency in `pyproject.toml`. Alternatively, install it directly via pip:
+Install the optional `viz` dependency group:
 
 ```bash
-pip install openai-agents[viz]
+pip install "openai-agents[viz]"
 ```
 
 ## Generating a Graph
@@ -83,24 +83,4 @@ draw_graph(triage_agent, filename="agent_graph.png")
 
 This will generate `agent_graph.png` in the working directory.
 
-## Testing the Visualization
-
-The visualization functionality includes test coverage to ensure correctness. Tests are located in `tests/test_visualizations.py` and verify:
-
-- Node and edge correctness in `get_main_graph()`.
-- Proper agent and tool representation in `get_all_nodes()`.
-- Accurate relationship mapping in `get_all_edges()`.
-- Graph rendering functionality in `draw_graph()`.
-
-Run tests using:
-
-```bash
-pytest tests/test_visualizations.py
-```
-
-## Conclusion
-
-Agent visualization provides a powerful way to **understand, debug, and communicate** how agents interact within an application. By leveraging **Graphviz**, you can generate intuitive visual representations of complex agent structures effortlessly.
-
-For further details on agent functionality, see the [Agents documentation](agents.md).
 
