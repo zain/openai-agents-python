@@ -57,6 +57,7 @@ dev = [
     "pynput",
     "textual",
     "websockets",
+    "graphviz",
 ]
 
 [tool.uv.workspace]
