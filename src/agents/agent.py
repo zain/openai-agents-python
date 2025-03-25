@@ -155,6 +155,10 @@ class Agent(Generic[TContext]):
       web search, etc are always processed by the LLM.
     """
 
+    reset_tool_choice: bool = True
+    """Whether to reset the tool choice to the default value after a tool has been called. Defaults
+    to True. This ensures that the agent doesn't enter an infinite loop of tool usage."""
+
     def clone(self, **kwargs: Any) -> Agent[TContext]:
         """Make a copy of the agent, with the given arguments changed. For example, you could do:
         ```
