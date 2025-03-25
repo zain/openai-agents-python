@@ -111,7 +111,7 @@ def get_all_edges(agent: Agent, parent: Optional[Agent] = None) -> str:
             "{agent.name}" -> "{handoff.name}";""")
             parts.append(get_all_edges(handoff, agent))
 
-    if not agent.handoffs and not isinstance(agent, Tool): # type: ignore
+    if not agent.handoffs and not isinstance(agent, Tool):  # type: ignore
         parts.append(f'"{agent.name}" -> "__end__";')
 
     return "".join(parts)
