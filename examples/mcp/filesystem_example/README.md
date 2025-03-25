@@ -1,6 +1,6 @@
 # MCP Filesystem Example
 
-This example uses the [fileystem MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem), running locally via `npx`.
+This example uses the [filesystem MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem), running locally via `npx`.
 
 Run it via:
 
