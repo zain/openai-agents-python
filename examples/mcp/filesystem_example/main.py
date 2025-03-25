@@ -2,7 +2,7 @@ import asyncio
 import os
 import shutil
 
-from agents import Agent, Runner, trace
+from agents import Agent, Runner, gen_trace_id, trace
 from agents.mcp import MCPServer, MCPServerStdio
 
 
@@ -37,12 +37,15 @@ async def main():
     samples_dir = os.path.join(current_dir, "sample_files")
 
     async with MCPServerStdio(
+        name="Filesystem Server, via npx",
         params={
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-filesystem", samples_dir],
-        }
+        },
     ) as server:
-        with trace(workflow_name="MCP Filesystem Example"):
+        trace_id = gen_trace_id()
+        with trace(workflow_name="MCP Filesystem Example", trace_id=trace_id):
+            print(f"View trace: https://platform.openai.com/traces/{trace_id}\n")
             await run(server)
 
 

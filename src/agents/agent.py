@@ -228,4 +228,5 @@ class Agent(Generic[TContext]):
 
     async def get_all_tools(self) -> list[Tool]:
         """All agent tools, including MCP tools and function tools."""
-        return await MCPUtil.get_all_function_tools(self.mcp_servers) + self.tools
+        mcp_tools = await self.get_mcp_tools()
+        return mcp_tools + self.tools

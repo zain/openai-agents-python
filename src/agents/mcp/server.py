@@ -27,6 +27,12 @@ class MCPServer(abc.ABC):
         """
         pass
 
+    @property
+    @abc.abstractmethod
+    def name(self) -> str:
+        """A readable name for the server."""
+        pass
+
     @abc.abstractmethod
     async def cleanup(self):
         """Cleanup the server. For example, this might mean closing a subprocess or
@@ -171,7 +177,12 @@ class MCPServerStdio(_MCPServerWithClientSession):
     details.
     """
 
-    def __init__(self, params: MCPServerStdioParams, cache_tools_list: bool = False):
+    def __init__(
+        self,
+        params: MCPServerStdioParams,
+        cache_tools_list: bool = False,
+        name: str | None = None,
+    ):
         """Create a new MCP server based on the stdio transport.
 
         Args:
@@ -185,6 +196,8 @@ class MCPServerStdio(_MCPServerWithClientSession):
                 invalidated by calling `invalidate_tools_cache()`. You should set this to `True`
                 if you know the server will not change its tools list, because it can drastically
                 improve latency (by avoiding a round-trip to the server every time).
+            name: A readable name for the server. If not provided, we'll create one from the
+                command.
         """
         super().__init__(cache_tools_list)
 
@@ -197,6 +210,8 @@ class MCPServerStdio(_MCPServerWithClientSession):
             encoding_error_handler=params.get("encoding_error_handler", "strict"),
         )
 
+        self._name = name or f"stdio: {self.params.command}"
+
     def create_streams(
         self,
     ) -> AbstractAsyncContextManager[
@@ -207,6 +222,11 @@ class MCPServerStdio(_MCPServerWithClientSession):
     ]:
         """Create the streams for the server."""
         return stdio_client(self.params)
+
+    @property
+    def name(self) -> str:
+        """A readable name for the server."""
+        return self._name
 
 
 class MCPServerSseParams(TypedDict):
@@ -231,7 +251,12 @@ class MCPServerSse(_MCPServerWithClientSession):
     for details.
     """
 
-    def __init__(self, params: MCPServerSseParams, cache_tools_list: bool = False):
+    def __init__(
+        self,
+        params: MCPServerSseParams,
+        cache_tools_list: bool = False,
+        name: str | None = None,
+    ):
         """Create a new MCP server based on the HTTP with SSE transport.
 
         Args:
@@ -245,10 +270,14 @@ class MCPServerSse(_MCPServerWithClientSession):
                 invalidated by calling `invalidate_tools_cache()`. You should set this to `True`
                 if you know the server will not change its tools list, because it can drastically
                 improve latency (by avoiding a round-trip to the server every time).
+
+            name: A readable name for the server. If not provided, we'll create one from the
+                URL.
         """
         super().__init__(cache_tools_list)
 
         self.params = params
+        self._name = name or f"sse: {self.params['url']}"
 
     def create_streams(
         self,
@@ -265,3 +294,8 @@ class MCPServerSse(_MCPServerWithClientSession):
             timeout=self.params.get("timeout", 5),
             sse_read_timeout=self.params.get("sse_read_timeout", 60 * 5),
         )
+
+    @property
+    def name(self) -> str:
+        """A readable name for the server."""
+        return self._name

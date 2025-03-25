@@ -7,6 +7,7 @@ from ..exceptions import AgentsException, ModelBehaviorError, UserError
 from ..logger import logger
 from ..run_context import RunContextWrapper
 from ..tool import FunctionTool, Tool
+from ..tracing import FunctionSpanData, get_current_span, mcp_tools_span
 
 if TYPE_CHECKING:
     from mcp.types import Tool as MCPTool
@@ -38,7 +39,11 @@ class MCPUtil:
     @classmethod
     async def get_function_tools(cls, server: "MCPServer") -> list[Tool]:
         """Get all function tools from a single MCP server."""
-        tools = await server.list_tools()
+
+        with mcp_tools_span(server=server.name) as span:
+            tools = await server.list_tools()
+            span.span_data.result = [tool.name for tool in tools]
+
         return [cls.to_function_tool(tool, server) for tool in tools]
 
     @classmethod
@@ -88,9 +93,23 @@ class MCPUtil:
         # The MCP tool result is a list of content items, whereas OpenAI tool outputs are a single
         # string. We'll try to convert.
         if len(result.content) == 1:
-            return result.content[0].model_dump_json()
+            tool_output = result.content[0].model_dump_json()
         elif len(result.content) > 1:
-            return json.dumps([item.model_dump() for item in result.content])
+            tool_output = json.dumps([item.model_dump() for item in result.content])
         else:
             logger.error(f"Errored MCP tool result: {result}")
-            return "Error running tool."
+            tool_output = "Error running tool."
+
+        current_span = get_current_span()
+        if current_span:
+            if isinstance(current_span.span_data, FunctionSpanData):
+                current_span.span_data.output = tool_output
+                current_span.span_data.mcp_data = {
+                    "server": server.name,
+                }
+            else:
+                logger.warning(
+                    f"Current span is not a FunctionSpanData, skipping tool output: {current_span}"
+                )
+
+        return tool_output
