@@ -175,10 +175,10 @@ class MCPServerStdio(_MCPServerWithClientSession):
         """Create a new MCP server based on the stdio transport.
 
         Args:
-            params: The params that configure the server. This includes:
-                - The command (e.g. `python` or `node`) that starts the server.
-                - The args to pass to the server command (e.g. `foo.py` or `server.js`).
-                - The environment variables to set for the server.
+            params: The params that configure the server. This includes the command to run to
+                start the server, the args to pass to the command, the environment variables to
+                set for the server, the working directory to use when spawning the process, and
+                the text encoding used when sending/receiving messages to the server.
             cache_tools_list: Whether to cache the tools list. If `True`, the tools list will be
                 cached and only fetched from the server once. If `False`, the tools list will be
                 fetched from the server on each call to `list_tools()`. The cache can be
@@ -235,11 +235,9 @@ class MCPServerSse(_MCPServerWithClientSession):
         """Create a new MCP server based on the HTTP with SSE transport.
 
         Args:
-            params: The params that configure the server. This includes:
-            - The URL of the server.
-            - The headers to send to the server.
-            - The timeout for the HTTP request.
-            - The timeout for the SSE connection.
+            params: The params that configure the server. This includes the URL of the server,
+                the headers to send to the server, the timeout for the HTTP request, and the
+                timeout for the SSE connection.
 
             cache_tools_list: Whether to cache the tools list. If `True`, the tools list will be
                 cached and only fetched from the server once. If `False`, the tools list will be

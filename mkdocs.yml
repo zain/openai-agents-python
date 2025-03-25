@@ -28,6 +28,7 @@ nav:
       - results.md
       - streaming.md
       - tools.md
+      - mcp.md
       - handoffs.md
       - tracing.md
       - context.md
@@ -60,6 +61,8 @@ nav:
           - ref/models/interface.md
           - ref/models/openai_chatcompletions.md
           - ref/models/openai_responses.md
+          - ref/mcp/server.md
+          - ref/mcp/util.md
       - Tracing:
           - ref/tracing/index.md
           - ref/tracing/create.md
@@ -107,6 +110,8 @@ plugins:
             show_signature_annotations: true
             # Makes the font sizes nicer
             heading_level: 3
+            # Show inherited members
+            inherited_members: true
 
 extra:
   # Remove material generation message in footer
