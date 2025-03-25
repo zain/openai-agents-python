@@ -344,6 +344,7 @@ class RunImpl:
         cls,
         *,
         agent: Agent[Any],
+        all_tools: list[Tool],
         response: ModelResponse,
         output_schema: AgentOutputSchema | None,
         handoffs: list[Handoff],
@@ -355,8 +356,8 @@ class RunImpl:
         computer_actions = []
 
         handoff_map = {handoff.tool_name: handoff for handoff in handoffs}
-        function_map = {tool.name: tool for tool in agent.tools if isinstance(tool, FunctionTool)}
-        computer_tool = next((tool for tool in agent.tools if isinstance(tool, ComputerTool)), None)
+        function_map = {tool.name: tool for tool in all_tools if isinstance(tool, FunctionTool)}
+        computer_tool = next((tool for tool in all_tools if isinstance(tool, ComputerTool)), None)
 
         for output in response.output:
             if isinstance(output, ResponseOutputMessage):

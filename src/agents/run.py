@@ -7,6 +7,8 @@ from typing import Any, cast
 
 from openai.types.responses import ResponseCompletedEvent
 
+from agents.tool import Tool
+
 from ._run_impl import (
     NextStepFinalOutput,
     NextStepHandoff,
@@ -177,7 +179,8 @@ class Runner:
                     # agent changes, or if the agent loop ends.
                     if current_span is None:
                         handoff_names = [h.agent_name for h in cls._get_handoffs(current_agent)]
-                        tool_names = [t.name for t in current_agent.tools]
+                        all_tools = await cls._get_all_tools(current_agent)
+                        tool_names = [t.name for t in all_tools]
                         if output_schema := cls._get_output_schema(current_agent):
                             output_type_name = output_schema.output_type_name()
                         else:
@@ -217,6 +220,7 @@ class Runner:
                             ),
                             cls._run_single_turn(
                                 agent=current_agent,
+                                all_tools=all_tools,
                                 original_input=original_input,
                                 generated_items=generated_items,
                                 hooks=hooks,
@@ -228,6 +232,7 @@ class Runner:
                     else:
                         turn_result = await cls._run_single_turn(
                             agent=current_agent,
+                            all_tools=all_tools,
                             original_input=original_input,
                             generated_items=generated_items,
                             hooks=hooks,
@@ -627,7 +632,7 @@ class Runner:
         system_prompt = await agent.get_system_prompt(context_wrapper)
 
         handoffs = cls._get_handoffs(agent)
-
+        all_tools = await cls._get_all_tools(agent)
         model = cls._get_model(agent, run_config)
         model_settings = agent.model_settings.resolve(run_config.model_settings)
         final_response: ModelResponse | None = None
@@ -640,7 +645,7 @@ class Runner:
             system_prompt,
             input,
             model_settings,
-            agent.tools,
+            all_tools,
             output_schema,
             handoffs,
             get_model_tracing_impl(
@@ -677,6 +682,7 @@ class Runner:
             pre_step_items=streamed_result.new_items,
             new_response=final_response,
             output_schema=output_schema,
+            all_tools=all_tools,
             handoffs=handoffs,
             hooks=hooks,
             context_wrapper=context_wrapper,
@@ -691,6 +697,7 @@ class Runner:
         cls,
         *,
         agent: Agent[TContext],
+        all_tools: list[Tool],
         original_input: str | list[TResponseInputItem],
         generated_items: list[RunItem],
         hooks: RunHooks[TContext],
@@ -721,6 +728,7 @@ class Runner:
             system_prompt,
             input,
             output_schema,
+            all_tools,
             handoffs,
             context_wrapper,
             run_config,
@@ -732,6 +740,7 @@ class Runner:
             pre_step_items=generated_items,
             new_response=new_response,
             output_schema=output_schema,
+            all_tools=all_tools,
             handoffs=handoffs,
             hooks=hooks,
             context_wrapper=context_wrapper,
@@ -743,6 +752,7 @@ class Runner:
         cls,
         *,
         agent: Agent[TContext],
+        all_tools: list[Tool],
         original_input: str | list[TResponseInputItem],
         pre_step_items: list[RunItem],
         new_response: ModelResponse,
@@ -754,6 +764,7 @@ class Runner:
     ) -> SingleStepResult:
         processed_response = RunImpl.process_model_response(
             agent=agent,
+            all_tools=all_tools,
             response=new_response,
             output_schema=output_schema,
             handoffs=handoffs,
@@ -853,6 +864,7 @@ class Runner:
         system_prompt: str | None,
         input: list[TResponseInputItem],
         output_schema: AgentOutputSchema | None,
+        all_tools: list[Tool],
         handoffs: list[Handoff],
         context_wrapper: RunContextWrapper[TContext],
         run_config: RunConfig,
@@ -863,7 +875,7 @@ class Runner:
             system_instructions=system_prompt,
             input=input,
             model_settings=model_settings,
-            tools=agent.tools,
+            tools=all_tools,
             output_schema=output_schema,
             handoffs=handoffs,
             tracing=get_model_tracing_impl(
@@ -891,6 +903,10 @@ class Runner:
             elif isinstance(handoff_item, Agent):
                 handoffs.append(handoff(handoff_item))
         return handoffs
+
+    @classmethod
+    async def _get_all_tools(cls, agent: Agent[Any]) -> list[Tool]:
+        return await agent.get_all_tools()
 
     @classmethod
     def _get_model(cls, agent: Agent[Any], run_config: RunConfig) -> Model:
