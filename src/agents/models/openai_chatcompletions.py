@@ -572,7 +572,6 @@ class OpenAIChatCompletionsModel(Model):
 
 
 class _Converter:
-
     @classmethod
     def is_openai(cls, client: AsyncOpenAI):
         return str(client.base_url).startswith("https://api.openai.com")
@@ -585,11 +584,14 @@ class _Converter:
 
     @classmethod
     def get_stream_options_param(
-            cls, client: AsyncOpenAI, model_settings: ModelSettings
+        cls, client: AsyncOpenAI, model_settings: ModelSettings
     ) -> dict[str, bool] | None:
         default_include_usage = True if cls.is_openai(client) else None
-        include_usage = model_settings.include_usage if model_settings.include_usage is not None \
+        include_usage = (
+            model_settings.include_usage
+            if model_settings.include_usage is not None
             else default_include_usage
+        )
         stream_options = {"include_usage": include_usage} if include_usage is not None else None
         return stream_options
 
