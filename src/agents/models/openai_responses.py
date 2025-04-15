@@ -120,7 +120,7 @@ class OpenAIResponsesModel(Model):
         return ModelResponse(
             output=response.output,
             usage=usage,
-            referenceable_id=response.id,
+            response_id=response.id,
         )
 
     async def stream_response(

@@ -81,7 +81,7 @@ class FakeModel(Model):
             return ModelResponse(
                 output=output,
                 usage=Usage(),
-                referenceable_id=None,
+                response_id=None,
             )
 
     async def stream_response(

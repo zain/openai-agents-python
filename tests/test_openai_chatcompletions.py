@@ -80,7 +80,7 @@ async def test_get_response_with_text_message(monkeypatch) -> None:
     assert resp.usage.input_tokens == 7
     assert resp.usage.output_tokens == 5
     assert resp.usage.total_tokens == 12
-    assert resp.referenceable_id is None
+    assert resp.response_id is None
 
 
 @pytest.mark.allow_call_model_methods

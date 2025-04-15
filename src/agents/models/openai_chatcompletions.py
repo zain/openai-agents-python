@@ -156,7 +156,7 @@ class OpenAIChatCompletionsModel(Model):
             return ModelResponse(
                 output=items,
                 usage=usage,
-                referenceable_id=None,
+                response_id=None,
             )
 
     async def stream_response(
