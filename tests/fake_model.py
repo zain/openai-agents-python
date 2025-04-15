@@ -63,6 +63,7 @@ class FakeModel(Model):
             "model_settings": model_settings,
             "tools": tools,
             "output_schema": output_schema,
+            "previous_response_id": previous_response_id,
         }
 
         with generation_span(disabled=not self.tracing_enabled) as span:
@@ -98,6 +99,14 @@ class FakeModel(Model):
         *,
         previous_response_id: str | None,
     ) -> AsyncIterator[TResponseStreamEvent]:
+        self.last_turn_args = {
+            "system_instructions": system_instructions,
+            "input": input,
+            "model_settings": model_settings,
+            "tools": tools,
+            "output_schema": output_schema,
+            "previous_response_id": previous_response_id,
+        }
         with generation_span(disabled=not self.tracing_enabled) as span:
             output = self.get_next_output()
             if isinstance(output, Exception):
