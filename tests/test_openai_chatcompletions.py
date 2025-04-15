@@ -67,6 +67,7 @@ async def test_get_response_with_text_message(monkeypatch) -> None:
         output_schema=None,
         handoffs=[],
         tracing=ModelTracing.DISABLED,
+        previous_response_id=None,
     )
     # Should have produced exactly one output message with one text part
     assert isinstance(resp, ModelResponse)
@@ -115,6 +116,7 @@ async def test_get_response_with_refusal(monkeypatch) -> None:
         output_schema=None,
         handoffs=[],
         tracing=ModelTracing.DISABLED,
+        previous_response_id=None,
     )
     assert len(resp.output) == 1
     assert isinstance(resp.output[0], ResponseOutputMessage)
@@ -164,6 +166,7 @@ async def test_get_response_with_tool_call(monkeypatch) -> None:
         output_schema=None,
         handoffs=[],
         tracing=ModelTracing.DISABLED,
+        previous_response_id=None,
     )
     # Expect a message item followed by a function tool call item.
     assert len(resp.output) == 2

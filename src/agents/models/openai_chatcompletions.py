@@ -108,6 +108,7 @@ class OpenAIChatCompletionsModel(Model):
         output_schema: AgentOutputSchema | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
+        previous_response_id: str | None,
     ) -> ModelResponse:
         with generation_span(
             model=str(self.model),
@@ -168,6 +169,8 @@ class OpenAIChatCompletionsModel(Model):
         output_schema: AgentOutputSchema | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
+        *,
+        previous_response_id: str | None,
     ) -> AsyncIterator[TResponseStreamEvent]:
         """
         Yields a partial message as it is generated, as well as the usage information.
