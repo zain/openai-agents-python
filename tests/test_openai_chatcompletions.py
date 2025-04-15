@@ -31,7 +31,7 @@ from agents import (
     generation_span,
 )
 from agents.models.fake_id import FAKE_RESPONSES_ID
-from agents.models.openai_chatcompletions import _Converter
+from agents.models.openai_chatcompletions import _Helpers
 
 
 @pytest.mark.allow_call_model_methods
@@ -301,32 +301,32 @@ def test_store_param():
 
     model_settings = ModelSettings()
     client = AsyncOpenAI()
-    assert _Converter.get_store_param(client, model_settings) is True, (
+    assert _Helpers.get_store_param(client, model_settings) is True, (
         "Should default to True for OpenAI API calls"
     )
 
     model_settings = ModelSettings(store=False)
-    assert _Converter.get_store_param(client, model_settings) is False, (
+    assert _Helpers.get_store_param(client, model_settings) is False, (
         "Should respect explicitly set store=False"
     )
 
     model_settings = ModelSettings(store=True)
-    assert _Converter.get_store_param(client, model_settings) is True, (
+    assert _Helpers.get_store_param(client, model_settings) is True, (
         "Should respect explicitly set store=True"
     )
 
     client = AsyncOpenAI(base_url="http://www.notopenai.com")
     model_settings = ModelSettings()
-    assert _Converter.get_store_param(client, model_settings) is None, (
+    assert _Helpers.get_store_param(client, model_settings) is None, (
         "Should default to None for non-OpenAI API calls"
     )
 
     model_settings = ModelSettings(store=False)
-    assert _Converter.get_store_param(client, model_settings) is False, (
+    assert _Helpers.get_store_param(client, model_settings) is False, (
         "Should respect explicitly set store=False"
     )
 
     model_settings = ModelSettings(store=True)
-    assert _Converter.get_store_param(client, model_settings) is True, (
+    assert _Helpers.get_store_param(client, model_settings) is True, (
         "Should respect explicitly set store=True"
     )
