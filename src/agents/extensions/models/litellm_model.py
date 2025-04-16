@@ -47,6 +47,11 @@ from ...usage import Usage
 
 
 class LitellmModel(Model):
+    """This class enables using any model via LiteLLM. LiteLLM allows you to acess OpenAPI,
+    Anthropic, Gemini, Mistral, and many other models.
+    See supported models here: [litellm models](https://docs.litellm.ai/docs/providers).
+    """
+
     def __init__(
         self,
         model: str,
@@ -140,9 +145,6 @@ class LitellmModel(Model):
         *,
         previous_response_id: str | None,
     ) -> AsyncIterator[TResponseStreamEvent]:
-        """
-        Yields a partial message as it is generated, as well as the usage information.
-        """
         with generation_span(
             model=str(self.model),
             model_config=dataclasses.asdict(model_settings)

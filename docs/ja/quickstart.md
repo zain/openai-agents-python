@@ -186,4 +186,4 @@ if __name__ == "__main__":
 
 -   [エージェント](agents.md) の設定方法について学ぶ
 -   [エージェントの実行](running_agents.md) について学ぶ
--   [tools](tools.md)、[guardrails](guardrails.md)、[models](models.md) について学ぶ
+-   [tools](tools.md)、[guardrails](guardrails.md)、[models](models/index.md) について学ぶ

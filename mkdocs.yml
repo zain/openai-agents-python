@@ -66,7 +66,9 @@ plugins:
                 - context.md
                 - guardrails.md
                 - multi_agent.md
-                - models.md
+                - Models:
+                    - models/index.md
+                    - models/litellm.md
                 - config.md
                 - visualization.md
                 - Voice agents:
@@ -123,6 +125,7 @@ plugins:
                 - Extensions:
                     - ref/extensions/handoff_filters.md
                     - ref/extensions/handoff_prompt.md
+                    - ref/extensions/litellm.md
 
         - locale: ja
           name: 日本語
