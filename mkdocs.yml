@@ -19,6 +19,9 @@ theme:
   logo: assets/logo.svg
   favicon: images/favicon-platform.svg
 
+repo_name: openai-agents-python
+repo_url: https://github.com/openai/openai-agents-python
+
 plugins:
   - search
   - mkdocstrings:
