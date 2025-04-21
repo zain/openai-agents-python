@@ -12,7 +12,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from openai.types.responses import Response
 
 from .. import _debug
-from ..agent_output import AgentOutputSchema
+from ..agent_output import AgentOutputSchemaBase
 from ..handoffs import Handoff
 from ..items import ModelResponse, TResponseInputItem, TResponseStreamEvent
 from ..logger import logger
@@ -49,7 +49,7 @@ class OpenAIChatCompletionsModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         previous_response_id: str | None,
@@ -110,7 +110,7 @@ class OpenAIChatCompletionsModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         *,
@@ -160,7 +160,7 @@ class OpenAIChatCompletionsModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         span: Span[GenerationSpanData],
         tracing: ModelTracing,
@@ -174,7 +174,7 @@ class OpenAIChatCompletionsModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         span: Span[GenerationSpanData],
         tracing: ModelTracing,
@@ -187,7 +187,7 @@ class OpenAIChatCompletionsModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         span: Span[GenerationSpanData],
         tracing: ModelTracing,

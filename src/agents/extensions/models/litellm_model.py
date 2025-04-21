@@ -29,7 +29,7 @@ from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.responses import Response
 
 from ... import _debug
-from ...agent_output import AgentOutputSchema
+from ...agent_output import AgentOutputSchemaBase
 from ...handoffs import Handoff
 from ...items import ModelResponse, TResponseInputItem, TResponseStreamEvent
 from ...logger import logger
@@ -68,7 +68,7 @@ class LitellmModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         previous_response_id: str | None,
@@ -139,7 +139,7 @@ class LitellmModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         *,
@@ -186,7 +186,7 @@ class LitellmModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         span: Span[GenerationSpanData],
         tracing: ModelTracing,
@@ -200,7 +200,7 @@ class LitellmModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         span: Span[GenerationSpanData],
         tracing: ModelTracing,
@@ -213,7 +213,7 @@ class LitellmModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         span: Span[GenerationSpanData],
         tracing: ModelTracing,

@@ -10,7 +10,7 @@ from typing_extensions import TypeVar
 
 from ._run_impl import QueueCompleteSentinel
 from .agent import Agent
-from .agent_output import AgentOutputSchema
+from .agent_output import AgentOutputSchemaBase
 from .exceptions import InputGuardrailTripwireTriggered, MaxTurnsExceeded
 from .guardrail import InputGuardrailResult, OutputGuardrailResult
 from .items import ItemHelpers, ModelResponse, RunItem, TResponseInputItem
@@ -124,7 +124,7 @@ class RunResultStreaming(RunResultBase):
     final_output: Any
     """The final output of the agent. This is None until the agent has finished running."""
 
-    _current_agent_output_schema: AgentOutputSchema | None = field(repr=False)
+    _current_agent_output_schema: AgentOutputSchemaBase | None = field(repr=False)
 
     _trace: Trace | None = field(repr=False)
 

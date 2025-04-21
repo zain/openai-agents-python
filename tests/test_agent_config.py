@@ -1,7 +1,7 @@
 import pytest
 from pydantic import BaseModel
 
-from agents import Agent, Handoff, RunContextWrapper, Runner, handoff
+from agents import Agent, AgentOutputSchema, Handoff, RunContextWrapper, Runner, handoff
 
 
 @pytest.mark.asyncio
@@ -160,8 +160,9 @@ async def test_agent_final_output():
     )
 
     schema = Runner._get_output_schema(agent)
+    assert isinstance(schema, AgentOutputSchema)
     assert schema is not None
     assert schema.output_type == Foo
-    assert schema.strict_json_schema is True
+    assert schema.is_strict_json_schema() is True
     assert schema.json_schema() is not None
     assert not schema.is_plain_text()

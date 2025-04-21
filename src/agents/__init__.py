@@ -6,7 +6,7 @@ from openai import AsyncOpenAI
 
 from . import _config
 from .agent import Agent, ToolsToFinalOutputFunction, ToolsToFinalOutputResult
-from .agent_output import AgentOutputSchema
+from .agent_output import AgentOutputSchema, AgentOutputSchemaBase
 from .computer import AsyncComputer, Button, Computer, Environment
 from .exceptions import (
     AgentsException,
@@ -158,6 +158,7 @@ __all__ = [
     "OpenAIProvider",
     "OpenAIResponsesModel",
     "AgentOutputSchema",
+    "AgentOutputSchemaBase",
     "Computer",
     "AsyncComputer",
     "Environment",

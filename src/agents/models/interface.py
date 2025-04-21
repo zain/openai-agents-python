@@ -5,7 +5,7 @@ import enum
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 
-from ..agent_output import AgentOutputSchema
+from ..agent_output import AgentOutputSchemaBase
 from ..handoffs import Handoff
 from ..items import ModelResponse, TResponseInputItem, TResponseStreamEvent
 from ..tool import Tool
@@ -41,7 +41,7 @@ class Model(abc.ABC):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         *,
@@ -72,7 +72,7 @@ class Model(abc.ABC):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         *,

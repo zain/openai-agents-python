@@ -18,7 +18,7 @@ from openai.types.responses import (
 )
 
 from .. import _debug
-from ..agent_output import AgentOutputSchema
+from ..agent_output import AgentOutputSchemaBase
 from ..exceptions import UserError
 from ..handoffs import Handoff
 from ..items import ItemHelpers, ModelResponse, TResponseInputItem
@@ -66,7 +66,7 @@ class OpenAIResponsesModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         previous_response_id: str | None,
@@ -131,7 +131,7 @@ class OpenAIResponsesModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         previous_response_id: str | None,
@@ -182,7 +182,7 @@ class OpenAIResponsesModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         previous_response_id: str | None,
         stream: Literal[True],
@@ -195,7 +195,7 @@ class OpenAIResponsesModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         previous_response_id: str | None,
         stream: Literal[False],
@@ -207,7 +207,7 @@ class OpenAIResponsesModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         previous_response_id: str | None,
         stream: Literal[True] | Literal[False] = False,
@@ -307,7 +307,7 @@ class Converter:
 
     @classmethod
     def get_response_format(
-        cls, output_schema: AgentOutputSchema | None
+        cls, output_schema: AgentOutputSchemaBase | None
     ) -> ResponseTextConfigParam | NotGiven:
         if output_schema is None or output_schema.is_plain_text():
             return NOT_GIVEN
@@ -317,7 +317,7 @@ class Converter:
                     "type": "json_schema",
                     "name": "final_output",
                     "schema": output_schema.json_schema(),
-                    "strict": output_schema.strict_json_schema,
+                    "strict": output_schema.is_strict_json_schema(),
                 }
             }
 

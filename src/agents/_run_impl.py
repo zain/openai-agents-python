@@ -29,7 +29,7 @@ from openai.types.responses.response_input_param import ComputerCallOutput
 from openai.types.responses.response_reasoning_item import ResponseReasoningItem
 
 from .agent import Agent, ToolsToFinalOutputResult
-from .agent_output import AgentOutputSchema
+from .agent_output import AgentOutputSchemaBase
 from .computer import AsyncComputer, Computer
 from .exceptions import AgentsException, ModelBehaviorError, UserError
 from .guardrail import InputGuardrail, InputGuardrailResult, OutputGuardrail, OutputGuardrailResult
@@ -195,7 +195,7 @@ class RunImpl:
         pre_step_items: list[RunItem],
         new_response: ModelResponse,
         processed_response: ProcessedResponse,
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         hooks: RunHooks[TContext],
         context_wrapper: RunContextWrapper[TContext],
         run_config: RunConfig,
@@ -335,7 +335,7 @@ class RunImpl:
         agent: Agent[Any],
         all_tools: list[Tool],
         response: ModelResponse,
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
     ) -> ProcessedResponse:
         items: list[RunItem] = []

@@ -19,7 +19,7 @@ from ._run_impl import (
     get_model_tracing_impl,
 )
 from .agent import Agent
-from .agent_output import AgentOutputSchema
+from .agent_output import AgentOutputSchema, AgentOutputSchemaBase
 from .exceptions import (
     AgentsException,
     InputGuardrailTripwireTriggered,
@@ -185,7 +185,7 @@ class Runner:
                     if current_span is None:
                         handoff_names = [h.agent_name for h in cls._get_handoffs(current_agent)]
                         if output_schema := cls._get_output_schema(current_agent):
-                            output_type_name = output_schema.output_type_name()
+                            output_type_name = output_schema.name()
                         else:
                             output_type_name = "str"
 
@@ -517,7 +517,7 @@ class Runner:
                 if current_span is None:
                     handoff_names = [h.agent_name for h in cls._get_handoffs(current_agent)]
                     if output_schema := cls._get_output_schema(current_agent):
-                        output_type_name = output_schema.output_type_name()
+                        output_type_name = output_schema.name()
                     else:
                         output_type_name = "str"
 
@@ -789,7 +789,7 @@ class Runner:
         original_input: str | list[TResponseInputItem],
         pre_step_items: list[RunItem],
         new_response: ModelResponse,
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         hooks: RunHooks[TContext],
         context_wrapper: RunContextWrapper[TContext],
@@ -900,7 +900,7 @@ class Runner:
         agent: Agent[TContext],
         system_prompt: str | None,
         input: list[TResponseInputItem],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         all_tools: list[Tool],
         handoffs: list[Handoff],
         context_wrapper: RunContextWrapper[TContext],
@@ -930,9 +930,11 @@ class Runner:
         return new_response
 
     @classmethod
-    def _get_output_schema(cls, agent: Agent[Any]) -> AgentOutputSchema | None:
+    def _get_output_schema(cls, agent: Agent[Any]) -> AgentOutputSchemaBase | None:
         if agent.output_type is None or agent.output_type is str:
             return None
+        elif isinstance(agent.output_type, AgentOutputSchemaBase):
+            return agent.output_type
 
         return AgentOutputSchema(agent.output_type)
 

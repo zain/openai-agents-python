@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable, Generic, Literal, cast
 
 from typing_extensions import NotRequired, TypeAlias, TypedDict
 
+from .agent_output import AgentOutputSchemaBase
 from .guardrail import InputGuardrail, OutputGuardrail
 from .handoffs import Handoff
 from .items import ItemHelpers
@@ -141,8 +142,14 @@ class Agent(Generic[TContext]):
     Runs only if the agent produces a final output.
     """
 
-    output_type: type[Any] | None = None
-    """The type of the output object. If not provided, the output will be `str`."""
+    output_type: type[Any] | AgentOutputSchemaBase | None = None
+    """The type of the output object. If not provided, the output will be `str`. In most cases,
+    you should pass a regular Python type (e.g. a dataclass, Pydantic model, TypedDict, etc).
+    You can customize this in two ways:
+    1. If you want non-strict schemas, pass `AgentOutputSchema(MyClass, strict_json_schema=False)`.
+    2. If you want to use a custom JSON schema (i.e. without using the SDK's automatic schema)
+       creation, subclass and pass an `AgentOutputSchemaBase` subclass.
+    """
 
     hooks: AgentHooks[TContext] | None = None
     """A class that receives callbacks on various lifecycle events for this agent.

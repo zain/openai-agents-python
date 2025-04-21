@@ -36,7 +36,7 @@ from openai.types.responses import (
 )
 from openai.types.responses.response_input_param import FunctionCallOutput, ItemReference, Message
 
-from ..agent_output import AgentOutputSchema
+from ..agent_output import AgentOutputSchemaBase
 from ..exceptions import AgentsException, UserError
 from ..handoffs import Handoff
 from ..items import TResponseInputItem, TResponseOutputItem
@@ -67,7 +67,7 @@ class Converter:
 
     @classmethod
     def convert_response_format(
-        cls, final_output_schema: AgentOutputSchema | None
+        cls, final_output_schema: AgentOutputSchemaBase | None
     ) -> ResponseFormat | NotGiven:
         if not final_output_schema or final_output_schema.is_plain_text():
             return NOT_GIVEN
@@ -76,7 +76,7 @@ class Converter:
             "type": "json_schema",
             "json_schema": {
                 "name": "final_output",
-                "strict": final_output_schema.strict_json_schema,
+                "strict": final_output_schema.is_strict_json_schema(),
                 "schema": final_output_schema.json_schema(),
             },
         }

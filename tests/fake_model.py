@@ -5,7 +5,7 @@ from typing import Any
 
 from openai.types.responses import Response, ResponseCompletedEvent
 
-from agents.agent_output import AgentOutputSchema
+from agents.agent_output import AgentOutputSchemaBase
 from agents.handoffs import Handoff
 from agents.items import (
     ModelResponse,
@@ -51,7 +51,7 @@ class FakeModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         *,
@@ -93,7 +93,7 @@ class FakeModel(Model):
         input: str | list[TResponseInputItem],
         model_settings: ModelSettings,
         tools: list[Tool],
-        output_schema: AgentOutputSchema | None,
+        output_schema: AgentOutputSchemaBase | None,
         handoffs: list[Handoff],
         tracing: ModelTracing,
         *,

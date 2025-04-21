@@ -232,7 +232,7 @@ def test_convert_response_format_returns_not_given_for_plain_text_and_dict_for_s
     assert resp_format["type"] == "json_schema"
     assert resp_format["json_schema"]["name"] == "final_output"
     assert "strict" in resp_format["json_schema"]
-    assert resp_format["json_schema"]["strict"] == schema.strict_json_schema
+    assert resp_format["json_schema"]["strict"] == schema.is_strict_json_schema()
     assert "schema" in resp_format["json_schema"]
     assert resp_format["json_schema"]["schema"] == schema.json_schema()
 
