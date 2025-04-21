@@ -126,7 +126,7 @@ class RunResultStreaming(RunResultBase):
 
     _current_agent_output_schema: AgentOutputSchemaBase | None = field(repr=False)
 
-    _trace: Trace | None = field(repr=False)
+    trace: Trace | None = field(repr=False)
 
     is_complete: bool = False
     """Whether the agent has finished running."""
@@ -184,9 +184,6 @@ class RunResultStreaming(RunResultBase):
 
             yield item
             self._event_queue.task_done()
-
-        if self._trace:
-            self._trace.finish(reset_current=True)
 
         self._cleanup_tasks()
 
