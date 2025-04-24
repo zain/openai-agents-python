@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 import json
 import time
 from collections.abc import AsyncIterator
@@ -75,7 +74,7 @@ class LitellmModel(Model):
     ) -> ModelResponse:
         with generation_span(
             model=str(self.model),
-            model_config=dataclasses.asdict(model_settings)
+            model_config=model_settings.to_json_dict()
             | {"base_url": str(self.base_url or ""), "model_impl": "litellm"},
             disabled=tracing.is_disabled(),
         ) as span_generation:
@@ -147,7 +146,7 @@ class LitellmModel(Model):
     ) -> AsyncIterator[TResponseStreamEvent]:
         with generation_span(
             model=str(self.model),
-            model_config=dataclasses.asdict(model_settings)
+            model_config=model_settings.to_json_dict()
             | {"base_url": str(self.base_url or ""), "model_impl": "litellm"},
             disabled=tracing.is_disabled(),
         ) as span_generation:

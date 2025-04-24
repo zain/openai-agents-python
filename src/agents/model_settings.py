@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, fields, replace
-from typing import Literal
+from typing import Any, Literal
 
 from openai._types import Body, Headers, Query
 from openai.types.shared import Reasoning
+from pydantic import BaseModel
 
 
 @dataclass
@@ -83,3 +85,16 @@ class ModelSettings:
             if getattr(override, field.name) is not None
         }
         return replace(self, **changes)
+
+    def to_json_dict(self) -> dict[str, Any]:
+        dataclass_dict = dataclasses.asdict(self)
+
+        json_dict: dict[str, Any] = {}
+
+        for field_name, value in dataclass_dict.items():
+            if isinstance(value, BaseModel):
+                json_dict[field_name] = value.model_dump(mode="json")
+            else:
+                json_dict[field_name] = value
+
+        return json_dict

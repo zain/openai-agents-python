@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 import json
 import time
 from collections.abc import AsyncIterator
@@ -56,8 +55,7 @@ class OpenAIChatCompletionsModel(Model):
     ) -> ModelResponse:
         with generation_span(
             model=str(self.model),
-            model_config=dataclasses.asdict(model_settings)
-            | {"base_url": str(self._client.base_url)},
+            model_config=model_settings.to_json_dict() | {"base_url": str(self._client.base_url)},
             disabled=tracing.is_disabled(),
         ) as span_generation:
             response = await self._fetch_response(
@@ -121,8 +119,7 @@ class OpenAIChatCompletionsModel(Model):
         """
         with generation_span(
             model=str(self.model),
-            model_config=dataclasses.asdict(model_settings)
-            | {"base_url": str(self._client.base_url)},
+            model_config=model_settings.to_json_dict() | {"base_url": str(self._client.base_url)},
             disabled=tracing.is_disabled(),
         ) as span_generation:
             response, stream = await self._fetch_response(

@@ -9,4 +9,3 @@ def pytest_ignore_collect(collection_path, config):
 
         if str(collection_path).startswith(this_dir):
             return True
-
