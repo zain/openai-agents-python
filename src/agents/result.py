@@ -15,6 +15,7 @@ from .exceptions import InputGuardrailTripwireTriggered, MaxTurnsExceeded
 from .guardrail import InputGuardrailResult, OutputGuardrailResult
 from .items import ItemHelpers, ModelResponse, RunItem, TResponseInputItem
 from .logger import logger
+from .run_context import RunContextWrapper
 from .stream_events import StreamEvent
 from .tracing import Trace
 from .util._pretty_print import pretty_print_result, pretty_print_run_result_streaming
@@ -50,6 +51,9 @@ class RunResultBase(abc.ABC):
     output_guardrail_results: list[OutputGuardrailResult]
     """Guardrail results for the final output of the agent."""
 
+    context_wrapper: RunContextWrapper[Any]
+    """The context wrapper for the agent run."""
+
     @property
     @abc.abstractmethod
     def last_agent(self) -> Agent[Any]:
@@ -75,9 +79,7 @@ class RunResultBase(abc.ABC):
 
     def to_input_list(self) -> list[TResponseInputItem]:
         """Creates a new input list, merging the original input with all the new items generated."""
-        original_items: list[TResponseInputItem] = ItemHelpers.input_to_new_input_list(
-            self.input
-        )
+        original_items: list[TResponseInputItem] = ItemHelpers.input_to_new_input_list(self.input)
         new_items = [item.to_input_item() for item in self.new_items]
 
         return original_items + new_items
@@ -206,17 +208,13 @@ class RunResultStreaming(RunResultBase):
 
     def _check_errors(self):
         if self.current_turn > self.max_turns:
-            self._stored_exception = MaxTurnsExceeded(
-                f"Max turns ({self.max_turns}) exceeded"
-            )
+            self._stored_exception = MaxTurnsExceeded(f"Max turns ({self.max_turns}) exceeded")
 
         # Fetch all the completed guardrail results from the queue and raise if needed
         while not self._input_guardrail_queue.empty():
             guardrail_result = self._input_guardrail_queue.get_nowait()
             if guardrail_result.output.tripwire_triggered:
-                self._stored_exception = InputGuardrailTripwireTriggered(
-                    guardrail_result
-                )
+                self._stored_exception = InputGuardrailTripwireTriggered(guardrail_result)
 
         # Check the tasks for any exceptions
         if self._run_impl_task and self._run_impl_task.done():

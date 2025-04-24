@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any
 
-from openai.types.responses import Response, ResponseCompletedEvent
+from openai.types.responses import Response, ResponseCompletedEvent, ResponseUsage
+from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 
 from agents.agent_output import AgentOutputSchemaBase
 from agents.handoffs import Handoff
@@ -33,6 +34,10 @@ class FakeModel(Model):
         )
         self.tracing_enabled = tracing_enabled
         self.last_turn_args: dict[str, Any] = {}
+        self.hardcoded_usage: Usage | None = None
+
+    def set_hardcoded_usage(self, usage: Usage):
+        self.hardcoded_usage = usage
 
     def set_next_output(self, output: list[TResponseOutputItem] | Exception):
         self.turn_outputs.append(output)
@@ -83,7 +88,7 @@ class FakeModel(Model):
 
             return ModelResponse(
                 output=output,
-                usage=Usage(),
+                usage=self.hardcoded_usage or Usage(),
                 response_id=None,
             )
 
@@ -123,13 +128,14 @@ class FakeModel(Model):
 
             yield ResponseCompletedEvent(
                 type="response.completed",
-                response=get_response_obj(output),
+                response=get_response_obj(output, usage=self.hardcoded_usage),
             )
 
 
 def get_response_obj(
     output: list[TResponseOutputItem],
     response_id: str | None = None,
+    usage: Usage | None = None,
 ) -> Response:
     return Response(
         id=response_id or "123",
@@ -141,4 +147,11 @@ def get_response_obj(
         tools=[],
         top_p=None,
         parallel_tool_calls=False,
+        usage=ResponseUsage(
+            input_tokens=usage.input_tokens if usage else 0,
+            output_tokens=usage.output_tokens if usage else 0,
+            total_tokens=usage.total_tokens if usage else 0,
+            input_tokens_details=InputTokensDetails(cached_tokens=0),
+            output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
+        ),
     )
