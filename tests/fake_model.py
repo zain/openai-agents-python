@@ -127,7 +127,10 @@ class FakeModel(Model):
             )
 
 
-def get_response_obj(output: list[TResponseOutputItem], response_id: str | None = None) -> Response:
+def get_response_obj(
+    output: list[TResponseOutputItem],
+    response_id: str | None = None,
+) -> Response:
     return Response(
         id=response_id or "123",
         created_at=123,
