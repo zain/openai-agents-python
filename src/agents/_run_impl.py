@@ -14,6 +14,9 @@ from openai.types.responses import (
     ResponseFunctionWebSearch,
     ResponseOutputMessage,
 )
+from openai.types.responses.response_code_interpreter_tool_call import (
+    ResponseCodeInterpreterToolCall,
+)
 from openai.types.responses.response_computer_tool_call import (
     ActionClick,
     ActionDoubleClick,
@@ -26,7 +29,12 @@ from openai.types.responses.response_computer_tool_call import (
     ActionWait,
 )
 from openai.types.responses.response_input_param import ComputerCallOutput, McpApprovalResponse
-from openai.types.responses.response_output_item import McpApprovalRequest, McpCall, McpListTools
+from openai.types.responses.response_output_item import (
+    ImageGenerationCall,
+    LocalShellCall,
+    McpApprovalRequest,
+    McpListTools,
+)
 from openai.types.responses.response_reasoning_item import ResponseReasoningItem
 
 from .agent import Agent, ToolsToFinalOutputResult
@@ -61,6 +69,8 @@ from .tool import (
     FunctionTool,
     FunctionToolResult,
     HostedMCPTool,
+    LocalShellCommandRequest,
+    LocalShellTool,
     MCPToolApprovalRequest,
     Tool,
 )
@@ -130,11 +140,18 @@ class ToolRunMCPApprovalRequest:
 
 
 @dataclass
+class ToolRunLocalShellCall:
+    tool_call: LocalShellCall
+    local_shell_tool: LocalShellTool
+
+
+@dataclass
 class ProcessedResponse:
     new_items: list[RunItem]
     handoffs: list[ToolRunHandoff]
     functions: list[ToolRunFunction]
     computer_actions: list[ToolRunComputerAction]
+    local_shell_calls: list[ToolRunLocalShellCall]
     tools_used: list[str]  # Names of all tools used, including hosted tools
     mcp_approval_requests: list[ToolRunMCPApprovalRequest]  # Only requests with callbacks
 
@@ -146,6 +163,7 @@ class ProcessedResponse:
                 self.handoffs,
                 self.functions,
                 self.computer_actions,
+                self.local_shell_calls,
                 self.mcp_approval_requests,
             ]
         )
@@ -371,11 +389,15 @@ class RunImpl:
         run_handoffs = []
         functions = []
         computer_actions = []
+        local_shell_calls = []
         mcp_approval_requests = []
         tools_used: list[str] = []
         handoff_map = {handoff.tool_name: handoff for handoff in handoffs}
         function_map = {tool.name: tool for tool in all_tools if isinstance(tool, FunctionTool)}
         computer_tool = next((tool for tool in all_tools if isinstance(tool, ComputerTool)), None)
+        local_shell_tool = next(
+            (tool for tool in all_tools if isinstance(tool, LocalShellTool)), None
+        )
         hosted_mcp_server_map = {
             tool.tool_config["server_label"]: tool
             for tool in all_tools
@@ -434,9 +456,29 @@ class RunImpl:
                         )
             elif isinstance(output, McpListTools):
                 items.append(MCPListToolsItem(raw_item=output, agent=agent))
-            elif isinstance(output, McpCall):
+            elif isinstance(output, ImageGenerationCall):
                 items.append(ToolCallItem(raw_item=output, agent=agent))
-                tools_used.append(output.name)
+                tools_used.append("image_generation")
+            elif isinstance(output, ResponseCodeInterpreterToolCall):
+                items.append(ToolCallItem(raw_item=output, agent=agent))
+                tools_used.append("code_interpreter")
+            elif isinstance(output, LocalShellCall):
+                items.append(ToolCallItem(raw_item=output, agent=agent))
+                tools_used.append("local_shell")
+                if not local_shell_tool:
+                    _error_tracing.attach_error_to_current_span(
+                        SpanError(
+                            message="Local shell tool not found",
+                            data={},
+                        )
+                    )
+                    raise ModelBehaviorError(
+                        "Model produced local shell call without a local shell tool."
+                    )
+                local_shell_calls.append(
+                    ToolRunLocalShellCall(tool_call=output, local_shell_tool=local_shell_tool)
+                )
+
             elif not isinstance(output, ResponseFunctionToolCall):
                 logger.warning(f"Unexpected output type, ignoring: {type(output)}")
                 continue
@@ -478,6 +520,7 @@ class RunImpl:
             handoffs=run_handoffs,
             functions=functions,
             computer_actions=computer_actions,
+            local_shell_calls=local_shell_calls,
             tools_used=tools_used,
             mcp_approval_requests=mcp_approval_requests,
         )
@@ -551,6 +594,30 @@ class RunImpl:
             )
             for tool_run, result in zip(tool_runs, results)
         ]
+
+    @classmethod
+    async def execute_local_shell_calls(
+        cls,
+        *,
+        agent: Agent[TContext],
+        calls: list[ToolRunLocalShellCall],
+        context_wrapper: RunContextWrapper[TContext],
+        hooks: RunHooks[TContext],
+        config: RunConfig,
+    ) -> list[RunItem]:
+        results: list[RunItem] = []
+        # Need to run these serially, because each call can affect the local shell state
+        for call in calls:
+            results.append(
+                await LocalShellAction.execute(
+                    agent=agent,
+                    call=call,
+                    hooks=hooks,
+                    context_wrapper=context_wrapper,
+                    config=config,
+                )
+            )
+        return results
 
     @classmethod
     async def execute_computer_actions(
@@ -1021,3 +1088,54 @@ class ComputerAction:
             await computer.wait()
 
         return await computer.screenshot()
+
+
+class LocalShellAction:
+    @classmethod
+    async def execute(
+        cls,
+        *,
+        agent: Agent[TContext],
+        call: ToolRunLocalShellCall,
+        hooks: RunHooks[TContext],
+        context_wrapper: RunContextWrapper[TContext],
+        config: RunConfig,
+    ) -> RunItem:
+        await asyncio.gather(
+            hooks.on_tool_start(context_wrapper, agent, call.local_shell_tool),
+            (
+                agent.hooks.on_tool_start(context_wrapper, agent, call.local_shell_tool)
+                if agent.hooks
+                else _coro.noop_coroutine()
+            ),
+        )
+
+        request = LocalShellCommandRequest(
+            ctx_wrapper=context_wrapper,
+            data=call.tool_call,
+        )
+        output = call.local_shell_tool.executor(request)
+        if inspect.isawaitable(output):
+            result = await output
+        else:
+            result = output
+
+        await asyncio.gather(
+            hooks.on_tool_end(context_wrapper, agent, call.local_shell_tool, result),
+            (
+                agent.hooks.on_tool_end(context_wrapper, agent, call.local_shell_tool, result)
+                if agent.hooks
+                else _coro.noop_coroutine()
+            ),
+        )
+
+        return ToolCallOutputItem(
+            agent=agent,
+            output=output,
+            raw_item={
+                "type": "local_shell_call_output",
+                "id": call.tool_call.call_id,
+                "output": result,
+                # "id": "out" + call.tool_call.id,  # TODO remove this, it should be optional
+            },
+        )

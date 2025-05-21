@@ -24,7 +24,17 @@ from ..exceptions import UserError
 from ..handoffs import Handoff
 from ..items import ItemHelpers, ModelResponse, TResponseInputItem
 from ..logger import logger
-from ..tool import ComputerTool, FileSearchTool, FunctionTool, HostedMCPTool, Tool, WebSearchTool
+from ..tool import (
+    CodeInterpreterTool,
+    ComputerTool,
+    FileSearchTool,
+    FunctionTool,
+    HostedMCPTool,
+    ImageGenerationTool,
+    LocalShellTool,
+    Tool,
+    WebSearchTool,
+)
 from ..tracing import SpanError, response_span
 from ..usage import Usage
 from ..version import __version__
@@ -295,6 +305,18 @@ class Converter:
             return {
                 "type": "computer_use_preview",
             }
+        elif tool_choice == "image_generation":
+            return {
+                "type": "image_generation",
+            }
+        elif tool_choice == "code_interpreter":
+            return {
+                "type": "code_interpreter",
+            }
+        elif tool_choice == "mcp":
+            return {
+                "type": "mcp",
+            }
         else:
             return {
                 "type": "function",
@@ -385,6 +407,17 @@ class Converter:
             includes = None
         elif isinstance(tool, HostedMCPTool):
             converted_tool = tool.tool_config
+            includes = None
+        elif isinstance(tool, ImageGenerationTool):
+            converted_tool = tool.tool_config
+            includes = None
+        elif isinstance(tool, CodeInterpreterTool):
+            converted_tool = tool.tool_config
+            includes = None
+        elif isinstance(tool, LocalShellTool):
+            converted_tool = {
+                "type": "local_shell",
+            }
             includes = None
         else:
             raise UserError(f"Unknown tool type: {type(tool)}, tool")

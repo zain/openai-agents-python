@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from typing import Any, Callable, Literal, Union, overload
 
 from openai.types.responses.file_search_tool_param import Filters, RankingOptions
-from openai.types.responses.response_output_item import McpApprovalRequest
-from openai.types.responses.tool_param import Mcp
+from openai.types.responses.response_output_item import LocalShellCall, McpApprovalRequest
+from openai.types.responses.tool_param import CodeInterpreter, ImageGeneration, Mcp
 from openai.types.responses.web_search_tool_param import UserLocation
 from pydantic import ValidationError
 from typing_extensions import Concatenate, NotRequired, ParamSpec, TypedDict
@@ -180,7 +180,67 @@ class HostedMCPTool:
         return "hosted_mcp"
 
 
-Tool = Union[FunctionTool, FileSearchTool, WebSearchTool, ComputerTool, HostedMCPTool]
+@dataclass
+class CodeInterpreterTool:
+    """A tool that allows the LLM to execute code in a sandboxed environment."""
+
+    tool_config: CodeInterpreter
+    """The tool config, which includes the container and other settings."""
+
+    @property
+    def name(self):
+        return "code_interpreter"
+
+
+@dataclass
+class ImageGenerationTool:
+    """A tool that allows the LLM to generate images."""
+
+    tool_config: ImageGeneration
+    """The tool config, which image generation settings."""
+
+    @property
+    def name(self):
+        return "image_generation"
+
+
+@dataclass
+class LocalShellCommandRequest:
+    """A request to execute a command on a shell."""
+
+    ctx_wrapper: RunContextWrapper[Any]
+    """The run context."""
+
+    data: LocalShellCall
+    """The data from the local shell tool call."""
+
+
+LocalShellExecutor = Callable[[LocalShellCommandRequest], MaybeAwaitable[str]]
+"""A function that executes a command on a shell."""
+
+
+@dataclass
+class LocalShellTool:
+    """A tool that allows the LLM to execute commands on a shell."""
+
+    executor: LocalShellExecutor
+    """A function that executes a command on a shell."""
+
+    @property
+    def name(self):
+        return "local_shell"
+
+
+Tool = Union[
+    FunctionTool,
+    FileSearchTool,
+    WebSearchTool,
+    ComputerTool,
+    HostedMCPTool,
+    LocalShellTool,
+    ImageGenerationTool,
+    CodeInterpreterTool,
+]
 """A tool that can be used in an agent."""
 
 
@@ -357,14 +417,4 @@ def function_tool(
     def decorator(real_func: ToolFunction[...]) -> FunctionTool:
         return _create_function_tool(real_func)
 
-    return decorator
-    return decorator
-    return decorator
-    return decorator
-    return decorator
-    return decorator
-    return decorator
-    return decorator
-    return decorator
-    return decorator
     return decorator

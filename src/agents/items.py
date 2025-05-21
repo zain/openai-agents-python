@@ -18,12 +18,22 @@ from openai.types.responses import (
     ResponseOutputText,
     ResponseStreamEvent,
 )
+from openai.types.responses.response_code_interpreter_tool_call import (
+    ResponseCodeInterpreterToolCall,
+)
 from openai.types.responses.response_input_item_param import (
     ComputerCallOutput,
     FunctionCallOutput,
+    LocalShellCallOutput,
     McpApprovalResponse,
 )
-from openai.types.responses.response_output_item import McpApprovalRequest, McpCall, McpListTools
+from openai.types.responses.response_output_item import (
+    ImageGenerationCall,
+    LocalShellCall,
+    McpApprovalRequest,
+    McpCall,
+    McpListTools,
+)
 from openai.types.responses.response_reasoning_item import ResponseReasoningItem
 from pydantic import BaseModel
 from typing_extensions import TypeAlias
@@ -114,6 +124,9 @@ ToolCallItemTypes: TypeAlias = Union[
     ResponseFileSearchToolCall,
     ResponseFunctionWebSearch,
     McpCall,
+    ResponseCodeInterpreterToolCall,
+    ImageGenerationCall,
+    LocalShellCall,
 ]
 """A type that represents a tool call item."""
 
@@ -129,10 +142,12 @@ class ToolCallItem(RunItemBase[ToolCallItemTypes]):
 
 
 @dataclass
-class ToolCallOutputItem(RunItemBase[Union[FunctionCallOutput, ComputerCallOutput]]):
+class ToolCallOutputItem(
+    RunItemBase[Union[FunctionCallOutput, ComputerCallOutput, LocalShellCallOutput]]
+):
     """Represents the output of a tool call."""
 
-    raw_item: FunctionCallOutput | ComputerCallOutput
+    raw_item: FunctionCallOutput | ComputerCallOutput | LocalShellCallOutput
     """The raw item from the model."""
 
     output: Any
