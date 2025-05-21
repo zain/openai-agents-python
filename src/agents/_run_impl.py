@@ -25,7 +25,8 @@ from openai.types.responses.response_computer_tool_call import (
     ActionType,
     ActionWait,
 )
-from openai.types.responses.response_input_param import ComputerCallOutput
+from openai.types.responses.response_input_param import ComputerCallOutput, McpApprovalResponse
+from openai.types.responses.response_output_item import McpApprovalRequest, McpCall, McpListTools
 from openai.types.responses.response_reasoning_item import ResponseReasoningItem
 
 from .agent import Agent, ToolsToFinalOutputResult
@@ -38,6 +39,9 @@ from .items import (
     HandoffCallItem,
     HandoffOutputItem,
     ItemHelpers,
+    MCPApprovalRequestItem,
+    MCPApprovalResponseItem,
+    MCPListToolsItem,
     MessageOutputItem,
     ModelResponse,
     ReasoningItem,
@@ -52,7 +56,14 @@ from .model_settings import ModelSettings
 from .models.interface import ModelTracing
 from .run_context import RunContextWrapper, TContext
 from .stream_events import RunItemStreamEvent, StreamEvent
-from .tool import ComputerTool, FunctionTool, FunctionToolResult, Tool
+from .tool import (
+    ComputerTool,
+    FunctionTool,
+    FunctionToolResult,
+    HostedMCPTool,
+    MCPToolApprovalRequest,
+    Tool,
+)
 from .tracing import (
     SpanError,
     Trace,
@@ -113,14 +124,21 @@ class ToolRunComputerAction:
 
 
 @dataclass
+class ToolRunMCPApprovalRequest:
+    request_item: McpApprovalRequest
+    mcp_tool: HostedMCPTool
+
+
+@dataclass
 class ProcessedResponse:
     new_items: list[RunItem]
     handoffs: list[ToolRunHandoff]
     functions: list[ToolRunFunction]
     computer_actions: list[ToolRunComputerAction]
     tools_used: list[str]  # Names of all tools used, including hosted tools
+    mcp_approval_requests: list[ToolRunMCPApprovalRequest]  # Only requests with callbacks
 
-    def has_tools_to_run(self) -> bool:
+    def has_tools_or_approvals_to_run(self) -> bool:
         # Handoffs, functions and computer actions need local processing
         # Hosted tools have already run, so there's nothing to do.
         return any(
@@ -128,6 +146,7 @@ class ProcessedResponse:
                 self.handoffs,
                 self.functions,
                 self.computer_actions,
+                self.mcp_approval_requests,
             ]
         )
 
@@ -226,7 +245,16 @@ class RunImpl:
         new_step_items.extend([result.run_item for result in function_results])
         new_step_items.extend(computer_results)
 
-        # Second, check if there are any handoffs
+        # Next, run the MCP approval requests
+        if processed_response.mcp_approval_requests:
+            approval_results = await cls.execute_mcp_approval_requests(
+                agent=agent,
+                approval_requests=processed_response.mcp_approval_requests,
+                context_wrapper=context_wrapper,
+            )
+            new_step_items.extend(approval_results)
+
+        # Next, check if there are any handoffs
         if run_handoffs := processed_response.handoffs:
             return await cls.execute_handoffs(
                 agent=agent,
@@ -240,7 +268,7 @@ class RunImpl:
                 run_config=run_config,
             )
 
-        # Third, we'll check if the tool use should result in a final output
+        # Next, we'll check if the tool use should result in a final output
         check_tool_use = await cls._check_for_final_output_from_tools(
             agent=agent,
             tool_results=function_results,
@@ -295,7 +323,7 @@ class RunImpl:
             )
         elif (
             not output_schema or output_schema.is_plain_text()
-        ) and not processed_response.has_tools_to_run():
+        ) and not processed_response.has_tools_or_approvals_to_run():
             return await cls.execute_final_output(
                 agent=agent,
                 original_input=original_input,
@@ -343,10 +371,16 @@ class RunImpl:
         run_handoffs = []
         functions = []
         computer_actions = []
+        mcp_approval_requests = []
         tools_used: list[str] = []
         handoff_map = {handoff.tool_name: handoff for handoff in handoffs}
         function_map = {tool.name: tool for tool in all_tools if isinstance(tool, FunctionTool)}
         computer_tool = next((tool for tool in all_tools if isinstance(tool, ComputerTool)), None)
+        hosted_mcp_server_map = {
+            tool.tool_config["server_label"]: tool
+            for tool in all_tools
+            if isinstance(tool, HostedMCPTool)
+        }
 
         for output in response.output:
             if isinstance(output, ResponseOutputMessage):
@@ -375,6 +409,34 @@ class RunImpl:
                 computer_actions.append(
                     ToolRunComputerAction(tool_call=output, computer_tool=computer_tool)
                 )
+            elif isinstance(output, McpApprovalRequest):
+                items.append(MCPApprovalRequestItem(raw_item=output, agent=agent))
+                if output.server_label not in hosted_mcp_server_map:
+                    _error_tracing.attach_error_to_current_span(
+                        SpanError(
+                            message="MCP server label not found",
+                            data={"server_label": output.server_label},
+                        )
+                    )
+                    raise ModelBehaviorError(f"MCP server label {output.server_label} not found")
+                else:
+                    server = hosted_mcp_server_map[output.server_label]
+                    if server.on_approval_request:
+                        mcp_approval_requests.append(
+                            ToolRunMCPApprovalRequest(
+                                request_item=output,
+                                mcp_tool=server,
+                            )
+                        )
+                    else:
+                        logger.warning(
+                            f"MCP server {output.server_label} has no on_approval_request hook"
+                        )
+            elif isinstance(output, McpListTools):
+                items.append(MCPListToolsItem(raw_item=output, agent=agent))
+            elif isinstance(output, McpCall):
+                items.append(ToolCallItem(raw_item=output, agent=agent))
+                tools_used.append(output.name)
             elif not isinstance(output, ResponseFunctionToolCall):
                 logger.warning(f"Unexpected output type, ignoring: {type(output)}")
                 continue
@@ -417,6 +479,7 @@ class RunImpl:
             functions=functions,
             computer_actions=computer_actions,
             tools_used=tools_used,
+            mcp_approval_requests=mcp_approval_requests,
         )
 
     @classmethod
@@ -644,6 +707,40 @@ class RunImpl:
         )
 
     @classmethod
+    async def execute_mcp_approval_requests(
+        cls,
+        *,
+        agent: Agent[TContext],
+        approval_requests: list[ToolRunMCPApprovalRequest],
+        context_wrapper: RunContextWrapper[TContext],
+    ) -> list[RunItem]:
+        async def run_single_approval(approval_request: ToolRunMCPApprovalRequest) -> RunItem:
+            callback = approval_request.mcp_tool.on_approval_request
+            assert callback is not None, "Callback is required for MCP approval requests"
+            maybe_awaitable_result = callback(
+                MCPToolApprovalRequest(context_wrapper, approval_request.request_item)
+            )
+            if inspect.isawaitable(maybe_awaitable_result):
+                result = await maybe_awaitable_result
+            else:
+                result = maybe_awaitable_result
+            reason = result.get("reason", None)
+            raw_item: McpApprovalResponse = {
+                "approval_request_id": approval_request.request_item.id,
+                "approve": result["approve"],
+                "type": "mcp_approval_response",
+            }
+            if not result["approve"] and reason:
+                raw_item["reason"] = reason
+            return MCPApprovalResponseItem(
+                raw_item=raw_item,
+                agent=agent,
+            )
+
+        tasks = [run_single_approval(approval_request) for approval_request in approval_requests]
+        return await asyncio.gather(*tasks)
+
+    @classmethod
     async def execute_final_output(
         cls,
         *,
@@ -727,6 +824,11 @@ class RunImpl:
                 event = RunItemStreamEvent(item=item, name="tool_output")
             elif isinstance(item, ReasoningItem):
                 event = RunItemStreamEvent(item=item, name="reasoning_item_created")
+            elif isinstance(item, MCPApprovalRequestItem):
+                event = RunItemStreamEvent(item=item, name="mcp_approval_requested")
+            elif isinstance(item, MCPListToolsItem):
+                event = RunItemStreamEvent(item=item, name="mcp_list_tools")
+
             else:
                 logger.warning(f"Unexpected item type: {type(item)}")
                 event = None

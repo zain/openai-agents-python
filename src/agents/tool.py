@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from typing import Any, Callable, Literal, Union, overload
 
 from openai.types.responses.file_search_tool_param import Filters, RankingOptions
+from openai.types.responses.response_output_item import McpApprovalRequest
+from openai.types.responses.tool_param import Mcp
 from openai.types.responses.web_search_tool_param import UserLocation
 from pydantic import ValidationError
-from typing_extensions import Concatenate, ParamSpec
+from typing_extensions import Concatenate, NotRequired, ParamSpec, TypedDict
 
 from . import _debug
 from .computer import AsyncComputer, Computer
@@ -130,7 +132,55 @@ class ComputerTool:
         return "computer_use_preview"
 
 
-Tool = Union[FunctionTool, FileSearchTool, WebSearchTool, ComputerTool]
+@dataclass
+class MCPToolApprovalRequest:
+    """A request to approve a tool call."""
+
+    ctx_wrapper: RunContextWrapper[Any]
+    """The run context."""
+
+    data: McpApprovalRequest
+    """The data from the MCP tool approval request."""
+
+
+class MCPToolApprovalFunctionResult(TypedDict):
+    """The result of an MCP tool approval function."""
+
+    approve: bool
+    """Whether to approve the tool call."""
+
+    reason: NotRequired[str]
+    """An optional reason, if rejected."""
+
+
+MCPToolApprovalFunction = Callable[
+    [MCPToolApprovalRequest], MaybeAwaitable[MCPToolApprovalFunctionResult]
+]
+"""A function that approves or rejects a tool call."""
+
+
+@dataclass
+class HostedMCPTool:
+    """A tool that allows the LLM to use a remote MCP server. The LLM will automatically list and
+    call tools, without requiring a a round trip back to your code.
+    If you want to run MCP servers locally via stdio, in a VPC or other non-publicly-accessible
+    environment, or you just prefer to run tool calls locally, then you can instead use the servers
+    in `agents.mcp` and pass `Agent(mcp_servers=[...])` to the agent."""
+
+    tool_config: Mcp
+    """The MCP tool config, which includes the server URL and other settings."""
+
+    on_approval_request: MCPToolApprovalFunction | None = None
+    """An optional function that will be called if approval is requested for an MCP tool. If not
+    provided, you will need to manually add approvals/rejections to the input and call
+    `Runner.run(...)` again."""
+
+    @property
+    def name(self):
+        return "hosted_mcp"
+
+
+Tool = Union[FunctionTool, FileSearchTool, WebSearchTool, ComputerTool, HostedMCPTool]
 """A tool that can be used in an agent."""
 
 
@@ -307,4 +357,14 @@ def function_tool(
     def decorator(real_func: ToolFunction[...]) -> FunctionTool:
         return _create_function_tool(real_func)
 
+    return decorator
+    return decorator
+    return decorator
+    return decorator
+    return decorator
+    return decorator
+    return decorator
+    return decorator
+    return decorator
+    return decorator
     return decorator

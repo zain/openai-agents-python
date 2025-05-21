@@ -24,7 +24,7 @@ from ..exceptions import UserError
 from ..handoffs import Handoff
 from ..items import ItemHelpers, ModelResponse, TResponseInputItem
 from ..logger import logger
-from ..tool import ComputerTool, FileSearchTool, FunctionTool, Tool, WebSearchTool
+from ..tool import ComputerTool, FileSearchTool, FunctionTool, HostedMCPTool, Tool, WebSearchTool
 from ..tracing import SpanError, response_span
 from ..usage import Usage
 from ..version import __version__
@@ -383,7 +383,9 @@ class Converter:
                 "display_height": tool.computer.dimensions[1],
             }
             includes = None
-
+        elif isinstance(tool, HostedMCPTool):
+            converted_tool = tool.tool_config
+            includes = None
         else:
             raise UserError(f"Unknown tool type: {type(tool)}, tool")
 
