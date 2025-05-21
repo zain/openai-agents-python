@@ -10,6 +10,7 @@ from openai.types import ChatModel
 from openai.types.responses import (
     Response,
     ResponseCompletedEvent,
+    ResponseIncludable,
     ResponseStreamEvent,
     ResponseTextConfigParam,
     ToolParam,
@@ -35,13 +36,6 @@ if TYPE_CHECKING:
 
 _USER_AGENT = f"Agents/Python {__version__}"
 _HEADERS = {"User-Agent": _USER_AGENT}
-
-# From the Responses API
-IncludeLiteral = Literal[
-    "file_search_call.results",
-    "message.input_image.image_url",
-    "computer_call_output.output.image_url",
-]
 
 
 class OpenAIResponsesModel(Model):
@@ -273,7 +267,7 @@ class OpenAIResponsesModel(Model):
 @dataclass
 class ConvertedTools:
     tools: list[ToolParam]
-    includes: list[IncludeLiteral]
+    includes: list[ResponseIncludable]
 
 
 class Converter:
@@ -330,7 +324,7 @@ class Converter:
         handoffs: list[Handoff[Any]],
     ) -> ConvertedTools:
         converted_tools: list[ToolParam] = []
-        includes: list[IncludeLiteral] = []
+        includes: list[ResponseIncludable] = []
 
         computer_tools = [tool for tool in tools if isinstance(tool, ComputerTool)]
         if len(computer_tools) > 1:
@@ -348,7 +342,7 @@ class Converter:
         return ConvertedTools(tools=converted_tools, includes=includes)
 
     @classmethod
-    def _convert_tool(cls, tool: Tool) -> tuple[ToolParam, IncludeLiteral | None]:
+    def _convert_tool(cls, tool: Tool) -> tuple[ToolParam, ResponseIncludable | None]:
         """Returns converted tool and includes"""
 
         if isinstance(tool, FunctionTool):
@@ -359,7 +353,7 @@ class Converter:
                 "type": "function",
                 "description": tool.description,
             }
-            includes: IncludeLiteral | None = None
+            includes: ResponseIncludable | None = None
         elif isinstance(tool, WebSearchTool):
             ws: WebSearchToolParam = {
                 "type": "web_search_preview",

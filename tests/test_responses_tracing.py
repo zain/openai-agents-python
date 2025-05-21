@@ -50,6 +50,7 @@ class DummyResponse:
         yield ResponseCompletedEvent(
             type="response.completed",
             response=fake_model.get_response_obj(self.output),
+            sequence_number=0,
         )
 
 
@@ -201,6 +202,7 @@ async def test_stream_response_creates_trace(monkeypatch):
                     yield ResponseCompletedEvent(
                         type="response.completed",
                         response=fake_model.get_response_obj([], "dummy-id-123"),
+                        sequence_number=0,
                     )
 
             return DummyStream()
@@ -253,6 +255,7 @@ async def test_stream_non_data_tracing_doesnt_set_response_id(monkeypatch):
                     yield ResponseCompletedEvent(
                         type="response.completed",
                         response=fake_model.get_response_obj([], "dummy-id-123"),
+                        sequence_number=0,
                     )
 
             return DummyStream()
@@ -304,6 +307,7 @@ async def test_stream_disabled_tracing_doesnt_create_span(monkeypatch):
                     yield ResponseCompletedEvent(
                         type="response.completed",
                         response=fake_model.get_response_obj([], "dummy-id-123"),
+                        sequence_number=0,
                     )
 
             return DummyStream()
