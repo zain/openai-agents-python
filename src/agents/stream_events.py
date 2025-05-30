@@ -31,6 +31,7 @@ class RunItemStreamEvent:
     name: Literal[
         "message_output_created",
         "handoff_requested",
+        # This is misspelled, but we can't change it because that would be a breaking change
         "handoff_occured",
         "tool_called",
         "tool_output",
