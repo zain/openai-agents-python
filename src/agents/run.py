@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import asyncio
@@ -182,6 +181,8 @@ class Runner:
 
             try:
                 while True:
+                    all_tools = await cls._get_all_tools(current_agent)
+
                     # Start an agent span if we don't have one. This span is ended if the current
                     # agent changes, or if the agent loop ends.
                     if current_span is None:
@@ -197,8 +198,6 @@ class Runner:
                             output_type=output_type_name,
                         )
                         current_span.start(mark_as_current=True)
-
-                        all_tools = await cls._get_all_tools(current_agent)
                         current_span.span_data.tools = [t.name for t in all_tools]
 
                     current_turn += 1
@@ -210,9 +209,7 @@ class Runner:
                                 data={"max_turns": max_turns},
                             ),
                         )
-                        raise MaxTurnsExceeded(
-                            f"Max turns ({max_turns}) exceeded"
-                        )
+                        raise MaxTurnsExceeded(f"Max turns ({max_turns}) exceeded")
 
                     logger.debug(
                         f"Running agent {current_agent.name} (turn {current_turn})",
@@ -295,7 +292,7 @@ class Runner:
                     last_agent=current_agent,
                     context_wrapper=context_wrapper,
                     input_guardrail_results=input_guardrail_results,
-                    output_guardrail_results=[]
+                    output_guardrail_results=[],
                 )
                 raise
             finally:
@@ -528,6 +525,8 @@ class Runner:
                 if streamed_result.is_complete:
                     break
 
+                all_tools = await cls._get_all_tools(current_agent)
+
                 # Start an agent span if we don't have one. This span is ended if the current
                 # agent changes, or if the agent loop ends.
                 if current_span is None:
@@ -543,8 +542,6 @@ class Runner:
                         output_type=output_type_name,
                     )
                     current_span.start(mark_as_current=True)
-
-                    all_tools = await cls._get_all_tools(current_agent)
                     tool_names = [t.name for t in all_tools]
                     current_span.span_data.tools = tool_names
                 current_turn += 1

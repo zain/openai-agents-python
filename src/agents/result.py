@@ -274,4 +274,3 @@ class RunResultStreaming(RunResultBase):
 
     def __str__(self) -> str:
         return pretty_print_run_result_streaming(self)
-

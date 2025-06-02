@@ -15,6 +15,7 @@ from .util._pretty_print import pretty_print_run_error_details
 @dataclass
 class RunErrorDetails:
     """Data collected from an agent run when an exception occurs."""
+
     input: str | list[TResponseInputItem]
     new_items: list[RunItem]
     raw_responses: list[ModelResponse]
@@ -29,6 +30,7 @@ class RunErrorDetails:
 
 class AgentsException(Exception):
     """Base class for all exceptions in the Agents SDK."""
+
     run_data: RunErrorDetails | None
 
     def __init__(self, *args: object) -> None:

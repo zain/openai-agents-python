@@ -26,8 +26,7 @@ async def test_extra_body_is_forwarded(monkeypatch):
 
     monkeypatch.setattr(litellm, "acompletion", fake_acompletion)
     settings = ModelSettings(
-        temperature=0.1,
-        extra_body={"cached_content": "some_cache", "foo": 123}
+        temperature=0.1, extra_body={"cached_content": "some_cache", "foo": 123}
     )
     model = LitellmModel(model="test-model")
 
