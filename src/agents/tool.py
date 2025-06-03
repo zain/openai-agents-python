@@ -4,7 +4,7 @@ import inspect
 import json
 from collections.abc import Awaitable
 from dataclasses import dataclass
-from typing import Any, Callable, Literal, Union, overload
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union, overload
 
 from openai.types.responses.file_search_tool_param import Filters, RankingOptions
 from openai.types.responses.response_output_item import LocalShellCall, McpApprovalRequest
@@ -23,6 +23,9 @@ from .run_context import RunContextWrapper
 from .tracing import SpanError
 from .util import _error_tracing
 from .util._types import MaybeAwaitable
+
+if TYPE_CHECKING:
+    from .agent import Agent
 
 ToolParams = ParamSpec("ToolParams")
 
@@ -73,6 +76,11 @@ class FunctionTool:
     strict_json_schema: bool = True
     """Whether the JSON schema is in strict mode. We **strongly** recommend setting this to True,
     as it increases the likelihood of correct JSON input."""
+
+    is_enabled: bool | Callable[[RunContextWrapper[Any], Agent[Any]], MaybeAwaitable[bool]] = True
+    """Whether the tool is enabled. Either a bool or a Callable that takes the run context and agent
+    and returns whether the tool is enabled. You can use this to dynamically enable/disable a tool
+    based on your context/state."""
 
 
 @dataclass
@@ -262,6 +270,7 @@ def function_tool(
     use_docstring_info: bool = True,
     failure_error_function: ToolErrorFunction | None = None,
     strict_mode: bool = True,
+    is_enabled: bool | Callable[[RunContextWrapper[Any], Agent[Any]], MaybeAwaitable[bool]] = True,
 ) -> FunctionTool:
     """Overload for usage as @function_tool (no parentheses)."""
     ...
@@ -276,6 +285,7 @@ def function_tool(
     use_docstring_info: bool = True,
     failure_error_function: ToolErrorFunction | None = None,
     strict_mode: bool = True,
+    is_enabled: bool | Callable[[RunContextWrapper[Any], Agent[Any]], MaybeAwaitable[bool]] = True,
 ) -> Callable[[ToolFunction[...]], FunctionTool]:
     """Overload for usage as @function_tool(...)."""
     ...
@@ -290,6 +300,7 @@ def function_tool(
     use_docstring_info: bool = True,
     failure_error_function: ToolErrorFunction | None = default_tool_error_function,
     strict_mode: bool = True,
+    is_enabled: bool | Callable[[RunContextWrapper[Any], Agent[Any]], MaybeAwaitable[bool]] = True,
 ) -> FunctionTool | Callable[[ToolFunction[...]], FunctionTool]:
     """
     Decorator to create a FunctionTool from a function. By default, we will:
@@ -318,6 +329,9 @@ def function_tool(
             If False, it allows non-strict JSON schemas. For example, if a parameter has a default
             value, it will be optional, additional properties are allowed, etc. See here for more:
             https://platform.openai.com/docs/guides/structured-outputs?api-mode=responses#supported-schemas
+        is_enabled: Whether the tool is enabled. Can be a bool or a callable that takes the run
+            context and agent and returns whether the tool is enabled. Disabled tools are hidden
+            from the LLM at runtime.
     """
 
     def _create_function_tool(the_func: ToolFunction[...]) -> FunctionTool:
@@ -407,6 +421,7 @@ def function_tool(
             params_json_schema=schema.params_json_schema,
             on_invoke_tool=_on_invoke_tool,
             strict_json_schema=strict_mode,
+            is_enabled=is_enabled,
         )
 
     # If func is actually a callable, we were used as @function_tool with no parentheses

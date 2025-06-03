@@ -5,7 +5,7 @@ import pytest
 from pydantic import BaseModel
 from typing_extensions import TypedDict
 
-from agents import FunctionTool, ModelBehaviorError, RunContextWrapper, function_tool
+from agents import Agent, FunctionTool, ModelBehaviorError, RunContextWrapper, function_tool
 from agents.tool import default_tool_error_function
 
 
@@ -255,3 +255,44 @@ async def test_async_custom_error_function_works():
 
     result = await tool.on_invoke_tool(ctx, '{"a": 1, "b": 2}')
     assert result == "error_ValueError"
+
+
+class BoolCtx(BaseModel):
+    enable_tools: bool
+
+
+@pytest.mark.asyncio
+async def test_is_enabled_bool_and_callable():
+    @function_tool(is_enabled=False)
+    def disabled_tool():
+        return "nope"
+
+    async def cond_enabled(ctx: RunContextWrapper[BoolCtx], agent: Agent[Any]) -> bool:
+        return ctx.context.enable_tools
+
+    @function_tool(is_enabled=cond_enabled)
+    def another_tool():
+        return "hi"
+
+    async def third_tool_on_invoke_tool(ctx: RunContextWrapper[Any], args: str) -> str:
+        return "third"
+
+    third_tool = FunctionTool(
+        name="third_tool",
+        description="third tool",
+        on_invoke_tool=third_tool_on_invoke_tool,
+        is_enabled=lambda ctx, agent: ctx.context.enable_tools,
+        params_json_schema={},
+    )
+
+    agent = Agent(name="t", tools=[disabled_tool, another_tool, third_tool])
+    context_1 = RunContextWrapper(BoolCtx(enable_tools=False))
+    context_2 = RunContextWrapper(BoolCtx(enable_tools=True))
+
+    tools_with_ctx = await agent.get_all_tools(context_1)
+    assert tools_with_ctx == []
+
+    tools_with_ctx = await agent.get_all_tools(context_2)
+    assert len(tools_with_ctx) == 2
+    assert tools_with_ctx[0].name == "another_tool"
+    assert tools_with_ctx[1].name == "third_tool"

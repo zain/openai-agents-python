@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import inspect
 from collections.abc import Awaitable
@@ -17,7 +18,7 @@ from .mcp import MCPUtil
 from .model_settings import ModelSettings
 from .models.interface import Model
 from .run_context import RunContextWrapper, TContext
-from .tool import FunctionToolResult, Tool, function_tool
+from .tool import FunctionTool, FunctionToolResult, Tool, function_tool
 from .util import _transforms
 from .util._types import MaybeAwaitable
 
@@ -246,7 +247,22 @@ class Agent(Generic[TContext]):
         convert_schemas_to_strict = self.mcp_config.get("convert_schemas_to_strict", False)
         return await MCPUtil.get_all_function_tools(self.mcp_servers, convert_schemas_to_strict)
 
-    async def get_all_tools(self) -> list[Tool]:
+    async def get_all_tools(self, run_context: RunContextWrapper[Any]) -> list[Tool]:
         """All agent tools, including MCP tools and function tools."""
         mcp_tools = await self.get_mcp_tools()
-        return mcp_tools + self.tools
+
+        async def _check_tool_enabled(tool: Tool) -> bool:
+            if not isinstance(tool, FunctionTool):
+                return True
+
+            attr = tool.is_enabled
+            if isinstance(attr, bool):
+                return attr
+            res = attr(run_context, self)
+            if inspect.isawaitable(res):
+                return bool(await res)
+            return bool(res)
+
+        results = await asyncio.gather(*(_check_tool_enabled(t) for t in self.tools))
+        enabled: list[Tool] = [t for t, ok in zip(self.tools, results) if ok]
+        return [*mcp_tools, *enabled]

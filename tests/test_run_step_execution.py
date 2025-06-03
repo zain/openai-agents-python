@@ -290,7 +290,7 @@ async def get_execute_result(
 
     processed_response = RunImpl.process_model_response(
         agent=agent,
-        all_tools=await agent.get_all_tools(),
+        all_tools=await agent.get_all_tools(context_wrapper or RunContextWrapper(None)),
         response=response,
         output_schema=output_schema,
         handoffs=handoffs,
