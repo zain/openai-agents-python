@@ -6,6 +6,9 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 
 from openai.types.responses import ResponseCompletedEvent
+from openai.types.responses.response_prompt_param import (
+    ResponsePromptParam,
+)
 
 from ._run_impl import (
     AgentToolUseTracker,
@@ -682,7 +685,10 @@ class Runner:
         streamed_result.current_agent = agent
         streamed_result._current_agent_output_schema = output_schema
 
-        system_prompt = await agent.get_system_prompt(context_wrapper)
+        system_prompt, prompt_config = await asyncio.gather(
+            agent.get_system_prompt(context_wrapper),
+            agent.get_prompt(context_wrapper),
+        )
 
         handoffs = cls._get_handoffs(agent)
         model = cls._get_model(agent, run_config)
@@ -706,6 +712,7 @@ class Runner:
                 run_config.tracing_disabled, run_config.trace_include_sensitive_data
             ),
             previous_response_id=previous_response_id,
+            prompt=prompt_config,
         ):
             if isinstance(event, ResponseCompletedEvent):
                 usage = (
@@ -777,7 +784,10 @@ class Runner:
                 ),
             )
 
-        system_prompt = await agent.get_system_prompt(context_wrapper)
+        system_prompt, prompt_config = await asyncio.gather(
+            agent.get_system_prompt(context_wrapper),
+            agent.get_prompt(context_wrapper),
+        )
 
         output_schema = cls._get_output_schema(agent)
         handoffs = cls._get_handoffs(agent)
@@ -795,6 +805,7 @@ class Runner:
             run_config,
             tool_use_tracker,
             previous_response_id,
+            prompt_config,
         )
 
         return await cls._get_single_step_result_from_response(
@@ -938,6 +949,7 @@ class Runner:
         run_config: RunConfig,
         tool_use_tracker: AgentToolUseTracker,
         previous_response_id: str | None,
+        prompt_config: ResponsePromptParam | None,
     ) -> ModelResponse:
         model = cls._get_model(agent, run_config)
         model_settings = agent.model_settings.resolve(run_config.model_settings)
@@ -954,6 +966,7 @@ class Runner:
                 run_config.tracing_disabled, run_config.trace_include_sensitive_data
             ),
             previous_response_id=previous_response_id,
+            prompt=prompt_config,
         )
 
         context_wrapper.usage.add(new_response.usage)
