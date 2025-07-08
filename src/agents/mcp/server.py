@@ -52,8 +52,8 @@ class MCPServer(abc.ABC):
     @abc.abstractmethod
     async def list_tools(
         self,
-        run_context: RunContextWrapper[Any],
-        agent: Agent[Any],
+        run_context: RunContextWrapper[Any] | None = None,
+        agent: Agent[Any] | None = None,
     ) -> list[MCPTool]:
         """List the tools available on the server."""
         pass
@@ -243,8 +243,8 @@ class _MCPServerWithClientSession(MCPServer, abc.ABC):
 
     async def list_tools(
         self,
-        run_context: RunContextWrapper[Any],
-        agent: Agent[Any],
+        run_context: RunContextWrapper[Any] | None = None,
+        agent: Agent[Any] | None = None,
     ) -> list[MCPTool]:
         """List the tools available on the server."""
         if not self.session:
@@ -263,6 +263,8 @@ class _MCPServerWithClientSession(MCPServer, abc.ABC):
         # Filter tools based on tool_filter
         filtered_tools = tools
         if self.tool_filter is not None:
+            if run_context is None or agent is None:
+                raise UserError("run_context and agent are required for dynamic tool filtering")
             filtered_tools = await self._apply_tool_filter(filtered_tools, run_context, agent)
         return filtered_tools
 
