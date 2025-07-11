@@ -231,7 +231,9 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
             ).validate_python(event)
         except Exception as e:
             logger.error(f"Invalid event: {event} - {e}")
-            await self._emit_event(RealtimeTransportErrorEvent(error=f"Invalid event: {event}"))
+            await self._emit_event(
+                RealtimeTransportErrorEvent(error=f"Invalid event: {event} - {e}")
+            )
             return
 
         if parsed.type == "response.audio.delta":
