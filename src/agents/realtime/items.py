@@ -92,7 +92,7 @@ class RealtimeToolCallItem(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-RealtimeItem = RealtimeMessageItem | RealtimeToolCallItem
+RealtimeItem = Union[RealtimeMessageItem, RealtimeToolCallItem]
 
 
 class RealtimeResponse(BaseModel):
