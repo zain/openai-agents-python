@@ -8,6 +8,7 @@ from typing import (
 
 from typing_extensions import NotRequired, TypeAlias, TypedDict
 
+from ..guardrail import OutputGuardrail
 from ..model_settings import ToolChoice
 from ..tool import Tool
 
@@ -83,10 +84,26 @@ class RealtimeSessionModelSettings(TypedDict):
     tools: NotRequired[list[Tool]]
 
 
+class RealtimeGuardrailsSettings(TypedDict):
+    """Settings for output guardrails in realtime sessions."""
+
+    debounce_text_length: NotRequired[int]
+    """
+    The minimum number of characters to accumulate before running guardrails on transcript
+    deltas. Defaults to 100. Guardrails run every time the accumulated text reaches
+    1x, 2x, 3x, etc. times this threshold.
+    """
+
+
 class RealtimeRunConfig(TypedDict):
     model_settings: NotRequired[RealtimeSessionModelSettings]
 
+    output_guardrails: NotRequired[list[OutputGuardrail[Any]]]
+    """List of output guardrails to run on the agent's responses."""
+
+    guardrails_settings: NotRequired[RealtimeGuardrailsSettings]
+    """Settings for guardrail execution."""
+
     # TODO (rm) Add tracing support
     # tracing: NotRequired[RealtimeTracingConfig | None]
-    # TODO (rm) Add guardrail support
     # TODO (rm) Add history audio storage config

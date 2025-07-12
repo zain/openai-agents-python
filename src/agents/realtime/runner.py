@@ -82,6 +82,7 @@ class RealtimeRunner:
             agent=self._starting_agent,
             context=context,
             model_config=model_config,
+            run_config=self._config,
         )
 
         return session
