@@ -81,7 +81,6 @@ class RealtimeSession(RealtimeModelListener):
         self._model_config = model_config or {}
         self._event_queue: asyncio.Queue[RealtimeSessionEvent] = asyncio.Queue()
         self._closed = False
-        self._background_task: asyncio.Task[None] | None = None
 
     async def __aenter__(self) -> RealtimeSession:
         """Start the session by connecting to the model. After this, you will be able to stream
@@ -129,14 +128,6 @@ class RealtimeSession(RealtimeModelListener):
         self._model.remove_listener(self)
         await self._model.close()
 
-        # Cancel any background tasks
-        if self._background_task and not self._background_task.done():
-            self._background_task.cancel()
-            try:
-                await self._background_task
-            except asyncio.CancelledError:
-                pass
-
     async def send_message(self, message: RealtimeUserInput) -> None:
         """Send a message to the model."""
         await self._model.send_message(message)
@@ -155,8 +146,7 @@ class RealtimeSession(RealtimeModelListener):
         if event.type == "error":
             await self._put_event(RealtimeError(info=self._event_info, error=event.error))
         elif event.type == "function_call":
-            # Handle tool calls in the background to avoid blocking event stream
-            self._background_task = asyncio.create_task(self._handle_tool_call(event))
+            await self._handle_tool_call(event)
         elif event.type == "audio":
             await self._put_event(RealtimeAudio(info=self._event_info, audio=event))
         elif event.type == "audio_interrupted":
@@ -164,7 +154,7 @@ class RealtimeSession(RealtimeModelListener):
         elif event.type == "audio_done":
             await self._put_event(RealtimeAudioEnd(info=self._event_info))
         elif event.type == "conversation.item.input_audio_transcription.completed":
-            self._history = self._get_new_history(self._history, event)
+            self._history = RealtimeSession._get_new_history(self._history, event)
             await self._put_event(
                 RealtimeHistoryUpdated(info=self._event_info, history=self._history)
             )
@@ -250,8 +240,9 @@ class RealtimeSession(RealtimeModelListener):
             # TODO (rm) Add error handling
             pass
 
+    @classmethod
     def _get_new_history(
-        self,
+        cls,
         old_history: list[RealtimeItem],
         event: RealtimeModelInputAudioTranscriptionCompletedEvent | RealtimeItem,
     ) -> list[RealtimeItem]:
@@ -296,5 +287,6 @@ class RealtimeSession(RealtimeModelListener):
                 new_history = old_history.copy()
                 new_history.insert(previous_index + 1, event)
                 return new_history
+
         # Otherwise, add it to the end
         return old_history + [event]
