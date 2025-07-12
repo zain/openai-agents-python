@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import asyncio
 import base64
+import inspect
 import json
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 import websockets
 from openai.types.beta.realtime.realtime_server_event import (
@@ -12,52 +15,72 @@ from openai.types.beta.realtime.realtime_server_event import (
 from pydantic import TypeAdapter
 from websockets.asyncio.client import ClientConnection
 
+from agents.util._types import MaybeAwaitable
+
 from ..exceptions import UserError
 from ..logger import logger
-from .config import RealtimeClientMessage, RealtimeUserInput, get_api_key
+from .config import (
+    RealtimeClientMessage,
+    RealtimeSessionModelSettings,
+    RealtimeUserInput,
+)
 from .items import RealtimeMessageItem, RealtimeToolCallItem
-from .transport import (
-    RealtimeSessionTransport,
-    RealtimeTransportConnectionOptions,
-    RealtimeTransportListener,
+from .model import (
+    RealtimeModel,
+    RealtimeModelConfig,
+    RealtimeModelListener,
 )
-from .transport_events import (
-    RealtimeTransportAudioDoneEvent,
-    RealtimeTransportAudioEvent,
-    RealtimeTransportAudioInterruptedEvent,
-    RealtimeTransportErrorEvent,
-    RealtimeTransportEvent,
-    RealtimeTransportInputAudioTranscriptionCompletedEvent,
-    RealtimeTransportItemDeletedEvent,
-    RealtimeTransportItemUpdatedEvent,
-    RealtimeTransportToolCallEvent,
-    RealtimeTransportTranscriptDelta,
-    RealtimeTransportTurnEndedEvent,
-    RealtimeTransportTurnStartedEvent,
+from .model_events import (
+    RealtimeModelAudioDoneEvent,
+    RealtimeModelAudioEvent,
+    RealtimeModelAudioInterruptedEvent,
+    RealtimeModelErrorEvent,
+    RealtimeModelEvent,
+    RealtimeModelInputAudioTranscriptionCompletedEvent,
+    RealtimeModelItemDeletedEvent,
+    RealtimeModelItemUpdatedEvent,
+    RealtimeModelToolCallEvent,
+    RealtimeModelTranscriptDeltaEvent,
+    RealtimeModelTurnEndedEvent,
+    RealtimeModelTurnStartedEvent,
 )
 
 
-class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
-    """A transport layer for realtime sessions that uses OpenAI's WebSocket API."""
+async def get_api_key(key: str | Callable[[], MaybeAwaitable[str]] | None) -> str | None:
+    if isinstance(key, str):
+        return key
+    elif callable(key):
+        result = key()
+        if inspect.isawaitable(result):
+            return await result
+        return result
+
+    return os.getenv("OPENAI_API_KEY")
+
+
+class OpenAIRealtimeWebSocketModel(RealtimeModel):
+    """A model that uses OpenAI's WebSocket API."""
 
     def __init__(self) -> None:
         self.model = "gpt-4o-realtime-preview"  # Default model
         self._websocket: ClientConnection | None = None
         self._websocket_task: asyncio.Task[None] | None = None
-        self._listeners: list[RealtimeTransportListener] = []
+        self._listeners: list[RealtimeModelListener] = []
         self._current_item_id: str | None = None
         self._audio_start_time: datetime | None = None
         self._audio_length_ms: float = 0.0
         self._ongoing_response: bool = False
         self._current_audio_content_index: int | None = None
 
-    async def connect(self, options: RealtimeTransportConnectionOptions) -> None:
+    async def connect(self, options: RealtimeModelConfig) -> None:
         """Establish a connection to the model and keep it alive."""
         assert self._websocket is None, "Already connected"
         assert self._websocket_task is None, "Already connected"
 
-        self.model = options.get("model", self.model)
-        api_key = await get_api_key(options.get("api_key", os.getenv("OPENAI_API_KEY")))
+        model_settings: RealtimeSessionModelSettings = options.get("initial_model_settings", {})
+
+        self.model = model_settings.get("model_name", self.model)
+        api_key = await get_api_key(options.get("api_key"))
 
         if not api_key:
             raise UserError("API key is required but was not provided.")
@@ -71,15 +94,15 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
         self._websocket = await websockets.connect(url, additional_headers=headers)
         self._websocket_task = asyncio.create_task(self._listen_for_messages())
 
-    def add_listener(self, listener: RealtimeTransportListener) -> None:
-        """Add a listener to the transport."""
+    def add_listener(self, listener: RealtimeModelListener) -> None:
+        """Add a listener to the model."""
         self._listeners.append(listener)
 
-    async def remove_listener(self, listener: RealtimeTransportListener) -> None:
-        """Remove a listener from the transport."""
+    def remove_listener(self, listener: RealtimeModelListener) -> None:
+        """Remove a listener from the model."""
         self._listeners.remove(listener)
 
-    async def _emit_event(self, event: RealtimeTransportEvent) -> None:
+    async def _emit_event(self, event: RealtimeModelEvent) -> None:
         """Emit an event to the listeners."""
         for listener in self._listeners:
             await listener.on_event(event)
@@ -154,7 +177,7 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
             await self.send_event({"type": "input_audio_buffer.commit"})
 
     async def send_tool_output(
-        self, tool_call: RealtimeTransportToolCallEvent, output: str, start_response: bool
+        self, tool_call: RealtimeModelToolCallEvent, output: str, start_response: bool
     ) -> None:
         """Send tool output to the model."""
         await self.send_event(
@@ -179,7 +202,7 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
             name=tool_call.name,
             output=output,
         )
-        await self._emit_event(RealtimeTransportItemUpdatedEvent(item=tool_item))
+        await self._emit_event(RealtimeModelItemUpdatedEvent(item=tool_item))
 
         if start_response:
             await self.send_event({"type": "response.create"})
@@ -193,7 +216,7 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
 
         elapsed_time_ms = (datetime.now() - self._audio_start_time).total_seconds() * 1000
         if elapsed_time_ms > 0 and elapsed_time_ms < self._audio_length_ms:
-            await self._emit_event(RealtimeTransportAudioInterruptedEvent())
+            await self._emit_event(RealtimeModelAudioInterruptedEvent())
             await self.send_event(
                 {
                     "type": "conversation.item.truncate",
@@ -231,9 +254,7 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
             ).validate_python(event)
         except Exception as e:
             logger.error(f"Invalid event: {event} - {e}")
-            await self._emit_event(
-                RealtimeTransportErrorEvent(error=f"Invalid event: {event} - {e}")
-            )
+            # await self._emit_event(RealtimeModelErrorEvent(error=f"Invalid event: {event} - {e}"))
             return
 
         if parsed.type == "response.audio.delta":
@@ -247,25 +268,25 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
             # Calculate audio length in ms using 24KHz pcm16le
             self._audio_length_ms += len(audio_bytes) / 24 / 2
             await self._emit_event(
-                RealtimeTransportAudioEvent(data=audio_bytes, response_id=parsed.response_id)
+                RealtimeModelAudioEvent(data=audio_bytes, response_id=parsed.response_id)
             )
         elif parsed.type == "response.audio.done":
-            await self._emit_event(RealtimeTransportAudioDoneEvent())
+            await self._emit_event(RealtimeModelAudioDoneEvent())
         elif parsed.type == "input_audio_buffer.speech_started":
             await self.interrupt()
         elif parsed.type == "response.created":
             self._ongoing_response = True
-            await self._emit_event(RealtimeTransportTurnStartedEvent())
+            await self._emit_event(RealtimeModelTurnStartedEvent())
         elif parsed.type == "response.done":
             self._ongoing_response = False
-            await self._emit_event(RealtimeTransportTurnEndedEvent())
+            await self._emit_event(RealtimeModelTurnEndedEvent())
         elif parsed.type == "session.created":
             # TODO (rm) tracing stuff here
             pass
         elif parsed.type == "error":
-            await self._emit_event(RealtimeTransportErrorEvent(error=parsed.error))
+            await self._emit_event(RealtimeModelErrorEvent(error=parsed.error))
         elif parsed.type == "conversation.item.deleted":
-            await self._emit_event(RealtimeTransportItemDeletedEvent(item_id=parsed.item_id))
+            await self._emit_event(RealtimeModelItemDeletedEvent(item_id=parsed.item_id))
         elif (
             parsed.type == "conversation.item.created"
             or parsed.type == "conversation.item.retrieved"
@@ -284,7 +305,7 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
                     "status": "in_progress",
                 }
             )
-            await self._emit_event(RealtimeTransportItemUpdatedEvent(item=message_item))
+            await self._emit_event(RealtimeModelItemUpdatedEvent(item=message_item))
         elif (
             parsed.type == "conversation.item.input_audio_transcription.completed"
             or parsed.type == "conversation.item.truncated"
@@ -299,13 +320,13 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
             )
             if parsed.type == "conversation.item.input_audio_transcription.completed":
                 await self._emit_event(
-                    RealtimeTransportInputAudioTranscriptionCompletedEvent(
+                    RealtimeModelInputAudioTranscriptionCompletedEvent(
                         item_id=parsed.item_id, transcript=parsed.transcript
                     )
                 )
         elif parsed.type == "response.audio_transcript.delta":
             await self._emit_event(
-                RealtimeTransportTranscriptDelta(
+                RealtimeModelTranscriptDeltaEvent(
                     item_id=parsed.item_id, delta=parsed.delta, response_id=parsed.response_id
                 )
             )
@@ -333,9 +354,9 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
                     name=item.name or "",
                     output=None,
                 )
-                await self._emit_event(RealtimeTransportItemUpdatedEvent(item=tool_call))
+                await self._emit_event(RealtimeModelItemUpdatedEvent(item=tool_call))
                 await self._emit_event(
-                    RealtimeTransportToolCallEvent(
+                    RealtimeModelToolCallEvent(
                         call_id=item.id or "",
                         name=item.name or "",
                         arguments=item.arguments or "",
@@ -352,4 +373,4 @@ class OpenAIRealtimeWebSocketTransport(RealtimeSessionTransport):
                         "status": "in_progress",
                     }
                 )
-                await self._emit_event(RealtimeTransportItemUpdatedEvent(item=message_item))
+                await self._emit_event(RealtimeModelItemUpdatedEvent(item=message_item))
