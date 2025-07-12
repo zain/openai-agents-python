@@ -83,6 +83,8 @@ class RealtimeSessionModelSettings(TypedDict):
     tool_choice: NotRequired[ToolChoice]
     tools: NotRequired[list[Tool]]
 
+    tracing: NotRequired[RealtimeModelTracingConfig | None]
+
 
 class RealtimeGuardrailsSettings(TypedDict):
     """Settings for output guardrails in realtime sessions."""
@@ -95,6 +97,19 @@ class RealtimeGuardrailsSettings(TypedDict):
     """
 
 
+class RealtimeModelTracingConfig(TypedDict):
+    """Configuration for tracing in realtime model sessions."""
+
+    workflow_name: NotRequired[str]
+    """The workflow name to use for tracing."""
+
+    group_id: NotRequired[str]
+    """A group identifier to use for tracing, to link multiple traces together."""
+
+    metadata: NotRequired[dict[str, Any]]
+    """Additional metadata to include with the trace."""
+
+
 class RealtimeRunConfig(TypedDict):
     model_settings: NotRequired[RealtimeSessionModelSettings]
 
@@ -104,6 +119,7 @@ class RealtimeRunConfig(TypedDict):
     guardrails_settings: NotRequired[RealtimeGuardrailsSettings]
     """Settings for guardrail execution."""
 
-    # TODO (rm) Add tracing support
-    # tracing: NotRequired[RealtimeTracingConfig | None]
+    tracing_disabled: NotRequired[bool]
+    """Whether tracing is disabled for this run."""
+
     # TODO (rm) Add history audio storage config
