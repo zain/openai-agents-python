@@ -29,6 +29,7 @@ RealtimeModelName: TypeAlias = Union[
 class RealtimeClientMessage(TypedDict):
     type: str  # explicitly required
     other_data: NotRequired[dict[str, Any]]
+    """Merged into the message body."""
 
 
 class RealtimeUserInputText(TypedDict):

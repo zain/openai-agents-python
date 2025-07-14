@@ -84,6 +84,7 @@ class RealtimeSession(RealtimeModelListener):
         self._run_config = run_config or {}
         self._event_queue: asyncio.Queue[RealtimeSessionEvent] = asyncio.Queue()
         self._closed = False
+        self._stored_exception: Exception | None = None
 
         # Guardrails state tracking
         self._interrupted_by_guardrail = False
@@ -130,6 +131,12 @@ class RealtimeSession(RealtimeModelListener):
         """Iterate over events from the session."""
         while not self._closed:
             try:
+                # Check if there's a stored exception to raise
+                if self._stored_exception is not None:
+                    # Clean up resources before raising
+                    await self._cleanup()
+                    raise self._stored_exception
+
                 event = await self._event_queue.get()
                 yield event
             except asyncio.CancelledError:
@@ -137,10 +144,7 @@ class RealtimeSession(RealtimeModelListener):
 
     async def close(self) -> None:
         """Close the session."""
-        self._closed = True
-        self._cleanup_guardrail_tasks()
-        self._model.remove_listener(self)
-        await self._model.close()
+        await self._cleanup()
 
     async def send_message(self, message: RealtimeUserInput) -> None:
         """Send a message to the model."""
@@ -228,6 +232,9 @@ class RealtimeSession(RealtimeModelListener):
                     info=self._event_info,
                 )
             )
+        elif event.type == "exception":
+            # Store the exception to be raised in __aiter__
+            self._stored_exception = event.exception
         elif event.type == "other":
             pass
         else:
@@ -403,3 +410,17 @@ class RealtimeSession(RealtimeModelListener):
             if not task.done():
                 task.cancel()
         self._guardrail_tasks.clear()
+
+    async def _cleanup(self) -> None:
+        """Clean up all resources and mark session as closed."""
+        # Cancel and cleanup guardrail tasks
+        self._cleanup_guardrail_tasks()
+
+        # Remove ourselves as a listener
+        self._model.remove_listener(self)
+
+        # Close the model connection
+        await self._model.close()
+
+        # Mark as closed
+        self._closed = True

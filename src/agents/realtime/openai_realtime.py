@@ -39,6 +39,7 @@ from .model_events import (
     RealtimeModelAudioInterruptedEvent,
     RealtimeModelErrorEvent,
     RealtimeModelEvent,
+    RealtimeModelExceptionEvent,
     RealtimeModelInputAudioTranscriptionCompletedEvent,
     RealtimeModelItemDeletedEvent,
     RealtimeModelItemUpdatedEvent,
@@ -130,48 +131,84 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
 
         try:
             async for message in self._websocket:
-                parsed = json.loads(message)
-                await self._handle_ws_event(parsed)
+                try:
+                    parsed = json.loads(message)
+                    await self._handle_ws_event(parsed)
+                except json.JSONDecodeError as e:
+                    await self._emit_event(
+                        RealtimeModelExceptionEvent(
+                            exception=e, context="Failed to parse WebSocket message as JSON"
+                        )
+                    )
+                except Exception as e:
+                    await self._emit_event(
+                        RealtimeModelExceptionEvent(
+                            exception=e, context="Error handling WebSocket event"
+                        )
+                    )
 
-        except websockets.exceptions.ConnectionClosed:
-            # TODO connection closed handling (event, cleanup)
-            logger.warning("WebSocket connection closed")
+        except websockets.exceptions.ConnectionClosedOK:
+            # Normal connection closure - no exception event needed
+            logger.info("WebSocket connection closed normally")
+        except websockets.exceptions.ConnectionClosed as e:
+            await self._emit_event(
+                RealtimeModelExceptionEvent(
+                    exception=e, context="WebSocket connection closed unexpectedly"
+                )
+            )
         except Exception as e:
-            logger.error(f"WebSocket error: {e}")
+            await self._emit_event(
+                RealtimeModelExceptionEvent(
+                    exception=e, context="WebSocket error in message listener"
+                )
+            )
 
     async def send_event(self, event: RealtimeClientMessage) -> None:
         """Send an event to the model."""
         assert self._websocket is not None, "Not connected"
-        converted_event = {
-            "type": event["type"],
-        }
 
-        converted_event.update(event.get("other_data", {}))
+        try:
+            converted_event = {
+                "type": event["type"],
+            }
 
-        await self._websocket.send(json.dumps(converted_event))
+            converted_event.update(event.get("other_data", {}))
+
+            await self._websocket.send(json.dumps(converted_event))
+        except Exception as e:
+            await self._emit_event(
+                RealtimeModelExceptionEvent(
+                    exception=e, context=f"Failed to send event: {event.get('type', 'unknown')}"
+                )
+            )
 
     async def send_message(
         self, message: RealtimeUserInput, other_event_data: dict[str, Any] | None = None
     ) -> None:
         """Send a message to the model."""
-        message = (
-            message
-            if isinstance(message, dict)
-            else {
-                "type": "message",
-                "role": "user",
-                "content": [{"type": "input_text", "text": message}],
+        try:
+            message = (
+                message
+                if isinstance(message, dict)
+                else {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": message}],
+                }
+            )
+            other_data = {
+                "item": message,
             }
-        )
-        other_data = {
-            "item": message,
-        }
-        if other_event_data:
-            other_data.update(other_event_data)
+            if other_event_data:
+                other_data.update(other_event_data)
 
-        await self.send_event({"type": "conversation.item.create", "other_data": other_data})
+            await self.send_event({"type": "conversation.item.create", "other_data": other_data})
 
-        await self.send_event({"type": "response.create"})
+            await self.send_event({"type": "response.create"})
+        except Exception as e:
+            await self._emit_event(
+                RealtimeModelExceptionEvent(exception=e, context="Failed to send message")
+            )
 
     async def send_audio(self, audio: bytes, *, commit: bool = False) -> None:
         """Send a raw audio chunk to the model.
@@ -182,17 +219,23 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
             detection, this can be used to indicate the turn is completed.
         """
         assert self._websocket is not None, "Not connected"
-        base64_audio = base64.b64encode(audio).decode("utf-8")
-        await self.send_event(
-            {
-                "type": "input_audio_buffer.append",
-                "other_data": {
-                    "audio": base64_audio,
-                },
-            }
-        )
-        if commit:
-            await self.send_event({"type": "input_audio_buffer.commit"})
+
+        try:
+            base64_audio = base64.b64encode(audio).decode("utf-8")
+            await self.send_event(
+                {
+                    "type": "input_audio_buffer.append",
+                    "other_data": {
+                        "audio": base64_audio,
+                    },
+                }
+            )
+            if commit:
+                await self.send_event({"type": "input_audio_buffer.commit"})
+        except Exception as e:
+            await self._emit_event(
+                RealtimeModelExceptionEvent(exception=e, context="Failed to send audio")
+            )
 
     async def send_tool_output(
         self, tool_call: RealtimeModelToolCallEvent, output: str, start_response: bool
@@ -342,8 +385,13 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
                 OpenAIRealtimeServerEvent
             ).validate_python(event)
         except Exception as e:
-            logger.error(f"Invalid event: {event} - {e}")
-            # await self._emit_event(RealtimeModelErrorEvent(error=f"Invalid event: {event} - {e}"))
+            event_type = event.get("type", "unknown") if isinstance(event, dict) else "unknown"
+            await self._emit_event(
+                RealtimeModelExceptionEvent(
+                    exception=e,
+                    context=f"Failed to validate server event: {event_type}",
+                )
+            )
             return
 
         if parsed.type == "response.audio.delta":

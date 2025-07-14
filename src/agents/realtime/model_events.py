@@ -130,6 +130,16 @@ class RealtimeModelOtherEvent:
     type: Literal["other"] = "other"
 
 
+@dataclass
+class RealtimeModelExceptionEvent:
+    """Exception occurred during model operation."""
+
+    exception: Exception
+    context: str | None = None
+
+    type: Literal["exception"] = "exception"
+
+
 # TODO (rm) Add usage events
 
 
@@ -147,4 +157,5 @@ RealtimeModelEvent: TypeAlias = Union[
     RealtimeModelTurnStartedEvent,
     RealtimeModelTurnEndedEvent,
     RealtimeModelOtherEvent,
+    RealtimeModelExceptionEvent,
 ]
