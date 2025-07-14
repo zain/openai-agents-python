@@ -36,6 +36,12 @@ from .model_events import (
     RealtimeModelInputAudioTranscriptionCompletedEvent,
     RealtimeModelToolCallEvent,
 )
+from .model_inputs import (
+    RealtimeModelSendAudio,
+    RealtimeModelSendInterrupt,
+    RealtimeModelSendToolOutput,
+    RealtimeModelSendUserInput,
+)
 
 
 class RealtimeSession(RealtimeModelListener):
@@ -148,15 +154,15 @@ class RealtimeSession(RealtimeModelListener):
 
     async def send_message(self, message: RealtimeUserInput) -> None:
         """Send a message to the model."""
-        await self._model.send_message(message)
+        await self._model.send_event(RealtimeModelSendUserInput(user_input=message))
 
     async def send_audio(self, audio: bytes, *, commit: bool = False) -> None:
         """Send a raw audio chunk to the model."""
-        await self._model.send_audio(audio, commit=commit)
+        await self._model.send_event(RealtimeModelSendAudio(audio=audio, commit=commit))
 
     async def interrupt(self) -> None:
         """Interrupt the model."""
-        await self._model.interrupt()
+        await self._model.send_event(RealtimeModelSendInterrupt())
 
     async def on_event(self, event: RealtimeModelEvent) -> None:
         await self._put_event(RealtimeRawModelEvent(data=event, info=self._event_info))
@@ -171,7 +177,7 @@ class RealtimeSession(RealtimeModelListener):
             await self._put_event(RealtimeAudioInterrupted(info=self._event_info))
         elif event.type == "audio_done":
             await self._put_event(RealtimeAudioEnd(info=self._event_info))
-        elif event.type == "conversation.item.input_audio_transcription.completed":
+        elif event.type == "input_audio_transcription_completed":
             self._history = RealtimeSession._get_new_history(self._history, event)
             await self._put_event(
                 RealtimeHistoryUpdated(info=self._event_info, history=self._history)
@@ -263,7 +269,9 @@ class RealtimeSession(RealtimeModelListener):
             tool_context = ToolContext.from_agent_context(self._context_wrapper, event.call_id)
             result = await func_tool.on_invoke_tool(tool_context, event.arguments)
 
-            await self._model.send_tool_output(event, str(result), True)
+            await self._model.send_event(RealtimeModelSendToolOutput(
+                tool_call=event, output=str(result), start_response=True
+            ))
 
             await self._put_event(
                 RealtimeToolEnd(
@@ -367,11 +375,13 @@ class RealtimeSession(RealtimeModelListener):
             )
 
             # Interrupt the model
-            await self._model.interrupt()
+            await self._model.send_event(RealtimeModelSendInterrupt())
 
             # Send guardrail triggered message
             guardrail_names = [result.guardrail.get_name() for result in triggered_results]
-            await self._model.send_message(f"guardrail triggered: {', '.join(guardrail_names)}")
+            await self._model.send_event(RealtimeModelSendUserInput(
+                user_input=f"guardrail triggered: {', '.join(guardrail_names)}"
+            ))
 
             return True
 

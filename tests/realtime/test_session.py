@@ -56,6 +56,8 @@ class MockRealtimeModel(RealtimeModel):
         self.listeners = []
         self.connect_called = False
         self.close_called = False
+        self.sent_events = []
+        # Legacy tracking for tests that haven't been updated yet
         self.sent_messages = []
         self.sent_audio = []
         self.sent_tool_outputs = []
@@ -72,19 +74,24 @@ class MockRealtimeModel(RealtimeModel):
             self.listeners.remove(listener)
 
     async def send_event(self, event):
-        pass
+        from agents.realtime.model_inputs import (
+            RealtimeModelSendAudio,
+            RealtimeModelSendInterrupt,
+            RealtimeModelSendToolOutput,
+            RealtimeModelSendUserInput,
+        )
 
-    async def send_message(self, message, other_event_data=None):
-        self.sent_messages.append(message)
+        self.sent_events.append(event)
 
-    async def send_audio(self, audio, commit=False):
-        self.sent_audio.append((audio, commit))
-
-    async def send_tool_output(self, tool_call, output, start_response=True):
-        self.sent_tool_outputs.append((tool_call, output, start_response))
-
-    async def interrupt(self):
-        self.interrupts_called += 1
+        # Update legacy tracking for compatibility
+        if isinstance(event, RealtimeModelSendUserInput):
+            self.sent_messages.append(event.user_input)
+        elif isinstance(event, RealtimeModelSendAudio):
+            self.sent_audio.append((event.audio, event.commit))
+        elif isinstance(event, RealtimeModelSendToolOutput):
+            self.sent_tool_outputs.append((event.tool_call, event.output, event.start_response))
+        elif isinstance(event, RealtimeModelSendInterrupt):
+            self.interrupts_called += 1
 
     async def close(self):
         self.close_called = True

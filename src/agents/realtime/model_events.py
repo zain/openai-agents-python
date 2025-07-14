@@ -64,9 +64,7 @@ class RealtimeModelInputAudioTranscriptionCompletedEvent:
     item_id: str
     transcript: str
 
-    type: Literal["conversation.item.input_audio_transcription.completed"] = (
-        "conversation.item.input_audio_transcription.completed"
-    )
+    type: Literal["input_audio_transcription_completed"] = "input_audio_transcription_completed"
 
 
 @dataclass
