@@ -971,6 +971,12 @@ class TestToolCallExecution:
 class TestGuardrailFunctionality:
     """Test suite for output guardrail functionality in RealtimeSession"""
 
+    async def _wait_for_guardrail_tasks(self, session):
+        """Wait for all pending guardrail tasks to complete."""
+        import asyncio
+        if session._guardrail_tasks:
+            await asyncio.gather(*session._guardrail_tasks, return_exceptions=True)
+
     @pytest.fixture
     def triggered_guardrail(self):
         """Creates a guardrail that always triggers"""
@@ -1010,6 +1016,9 @@ class TestGuardrailFunctionality:
 
         await session.on_event(transcript_event)
 
+        # Wait for async guardrail tasks to complete
+        await self._wait_for_guardrail_tasks(session)
+
         # Should have triggered guardrail and interrupted
         assert session._interrupted_by_guardrail is True
         assert mock_model.interrupts_called == 1
@@ -1046,6 +1055,9 @@ class TestGuardrailFunctionality:
         await session.on_event(RealtimeModelTranscriptDeltaEvent(
             item_id="item_1", delta="67890", response_id="resp_1"
         ))
+
+        # Wait for async guardrail tasks to complete
+        await self._wait_for_guardrail_tasks(session)
 
         # Should only trigger once due to interrupted_by_guardrail flag
         assert mock_model.interrupts_called == 1
@@ -1105,6 +1117,9 @@ class TestGuardrailFunctionality:
             item_id="item_1", delta="trigger", response_id="resp_1"
         ))
 
+        # Wait for async guardrail tasks to complete
+        await self._wait_for_guardrail_tasks(session)
+
         assert session._interrupted_by_guardrail is True
         assert len(session._item_transcripts) == 1
 
@@ -1142,6 +1157,9 @@ class TestGuardrailFunctionality:
         await session.on_event(RealtimeModelTranscriptDeltaEvent(
             item_id="item_1", delta="trigger", response_id="resp_1"
         ))
+
+        # Wait for async guardrail tasks to complete
+        await self._wait_for_guardrail_tasks(session)
 
         # Should have interrupted and sent message with both guardrail names
         assert mock_model.interrupts_called == 1

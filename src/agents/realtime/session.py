@@ -93,6 +93,8 @@ class RealtimeSession(RealtimeModelListener):
             "debounce_text_length", 100
         )
 
+        self._guardrail_tasks: set[asyncio.Task[Any]] = set()
+
     async def __aenter__(self) -> RealtimeSession:
         """Start the session by connecting to the model. After this, you will be able to stream
         events from the model and send messages and audio to the model.
@@ -136,6 +138,7 @@ class RealtimeSession(RealtimeModelListener):
     async def close(self) -> None:
         """Close the session."""
         self._closed = True
+        self._cleanup_guardrail_tasks()
         self._model.remove_listener(self)
         await self._model.close()
 
@@ -185,7 +188,7 @@ class RealtimeSession(RealtimeModelListener):
 
             if current_length >= next_run_threshold:
                 self._item_guardrail_run_counts[item_id] += 1
-                await self._run_output_guardrails(self._item_transcripts[item_id])
+                self._enqueue_guardrail_task(self._item_transcripts[item_id])
         elif event.type == "item_updated":
             is_new = not any(item.item_id == event.item.item_id for item in self._history)
             self._history = self._get_new_history(self._history, event.item)
@@ -366,3 +369,37 @@ class RealtimeSession(RealtimeModelListener):
             return True
 
         return False
+
+    def _enqueue_guardrail_task(self, text: str) -> None:
+        # Runs the guardrails in a separate task to avoid blocking the main loop
+
+        task = asyncio.create_task(self._run_output_guardrails(text))
+        self._guardrail_tasks.add(task)
+
+        # Add callback to remove completed tasks and handle exceptions
+        task.add_done_callback(self._on_guardrail_task_done)
+
+    def _on_guardrail_task_done(self, task: asyncio.Task[Any]) -> None:
+        """Handle completion of a guardrail task."""
+        # Remove from tracking set
+        self._guardrail_tasks.discard(task)
+
+        # Check for exceptions and propagate as events
+        if not task.cancelled():
+            exception = task.exception()
+            if exception:
+                # Create an exception event instead of raising
+                asyncio.create_task(
+                    self._put_event(
+                        RealtimeError(
+                            info=self._event_info,
+                            error={"message": f"Guardrail task failed: {str(exception)}"},
+                        )
+                    )
+                )
+
+    def _cleanup_guardrail_tasks(self) -> None:
+        for task in self._guardrail_tasks:
+            if not task.done():
+                task.cancel()
+        self._guardrail_tasks.clear()
