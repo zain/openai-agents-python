@@ -8,16 +8,22 @@ import os
 from datetime import datetime
 from typing import Any, Callable, Literal
 
+import pydantic
 import websockets
 from openai.types.beta.realtime.conversation_item import ConversationItem
 from openai.types.beta.realtime.realtime_server_event import (
     RealtimeServerEvent as OpenAIRealtimeServerEvent,
 )
 from openai.types.beta.realtime.response_audio_delta_event import ResponseAudioDeltaEvent
+from openai.types.beta.realtime.session_update_event import (
+    Session as OpenAISessionObject,
+    SessionTool as OpenAISessionTool,
+)
 from pydantic import TypeAdapter
 from typing_extensions import assert_never
 from websockets.asyncio.client import ClientConnection
 
+from agents.tool import FunctionTool, Tool
 from agents.util._types import MaybeAwaitable
 
 from ..exceptions import UserError
@@ -52,9 +58,21 @@ from .model_inputs import (
     RealtimeModelSendEvent,
     RealtimeModelSendInterrupt,
     RealtimeModelSendRawMessage,
+    RealtimeModelSendSessionUpdate,
     RealtimeModelSendToolOutput,
     RealtimeModelSendUserInput,
 )
+
+DEFAULT_MODEL_SETTINGS: RealtimeSessionModelSettings = {
+    "voice": "ash",
+    "modalities": ["text", "audio"],
+    "input_audio_format": "pcm16",
+    "output_audio_format": "pcm16",
+    "input_audio_transcription": {
+        "model": "gpt-4o-mini-transcribe",
+    },
+    "turn_detection": {"type": "semantic_vad"},
+}
 
 
 async def get_api_key(key: str | Callable[[], MaybeAwaitable[str]] | None) -> str | None:
@@ -110,6 +128,7 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
         }
         self._websocket = await websockets.connect(url, additional_headers=headers)
         self._websocket_task = asyncio.create_task(self._listen_for_messages())
+        await self._update_session_config(model_settings)
 
     async def _send_tracing_config(
         self, tracing_config: RealtimeModelTracingConfig | Literal["auto"] | None
@@ -127,11 +146,13 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
 
     def add_listener(self, listener: RealtimeModelListener) -> None:
         """Add a listener to the model."""
-        self._listeners.append(listener)
+        if listener not in self._listeners:
+            self._listeners.append(listener)
 
     def remove_listener(self, listener: RealtimeModelListener) -> None:
         """Remove a listener from the model."""
-        self._listeners.remove(listener)
+        if listener in self._listeners:
+            self._listeners.remove(listener)
 
     async def _emit_event(self, event: RealtimeModelEvent) -> None:
         """Emit an event to the listeners."""
@@ -187,6 +208,8 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
             await self._send_tool_output(event)
         elif isinstance(event, RealtimeModelSendInterrupt):
             await self._send_interrupt(event)
+        elif isinstance(event, RealtimeModelSendSessionUpdate):
+            await self._send_session_update(event)
         else:
             assert_never(event)
             raise ValueError(f"Unknown event type: {type(event)}")
@@ -195,78 +218,55 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
         """Send a raw message to the model."""
         assert self._websocket is not None, "Not connected"
 
-        try:
-            converted_event = {
-                "type": event.message["type"],
-            }
+        converted_event = {
+            "type": event.message["type"],
+        }
 
-            converted_event.update(event.message.get("other_data", {}))
+        converted_event.update(event.message.get("other_data", {}))
 
-            await self._websocket.send(json.dumps(converted_event))
-        except Exception as e:
-            await self._emit_event(
-                RealtimeModelExceptionEvent(
-                    exception=e,
-                    context=f"Failed to send event: {event.message.get('type', 'unknown')}",
-                )
-            )
+        await self._websocket.send(json.dumps(converted_event))
 
     async def _send_user_input(self, event: RealtimeModelSendUserInput) -> None:
-        """Send a user input to the model."""
-        try:
-            message = (
-                event.user_input
-                if isinstance(event.user_input, dict)
-                else {
-                    "type": "message",
-                    "role": "user",
-                    "content": [{"type": "input_text", "text": event.user_input}],
-                }
-            )
-            other_data = {
-                "item": message,
+        message = (
+            event.user_input
+            if isinstance(event.user_input, dict)
+            else {
+                "type": "message",
+                "role": "user",
+                "content": [{"type": "input_text", "text": event.user_input}],
             }
+        )
+        other_data = {
+            "item": message,
+        }
 
-            await self._send_raw_message(
-                RealtimeModelSendRawMessage(
-                    message={"type": "conversation.item.create", "other_data": other_data}
-                )
+        await self._send_raw_message(
+            RealtimeModelSendRawMessage(
+                message={"type": "conversation.item.create", "other_data": other_data}
             )
-            await self._send_raw_message(
-                RealtimeModelSendRawMessage(message={"type": "response.create"})
-            )
-        except Exception as e:
-            await self._emit_event(
-                RealtimeModelExceptionEvent(exception=e, context="Failed to send message")
-            )
+        )
+        await self._send_raw_message(
+            RealtimeModelSendRawMessage(message={"type": "response.create"})
+        )
 
     async def _send_audio(self, event: RealtimeModelSendAudio) -> None:
-        """Send audio to the model."""
-        assert self._websocket is not None, "Not connected"
-
-        try:
-            base64_audio = base64.b64encode(event.audio).decode("utf-8")
-            await self._send_raw_message(
-                RealtimeModelSendRawMessage(
-                    message={
-                        "type": "input_audio_buffer.append",
-                        "other_data": {
-                            "audio": base64_audio,
-                        },
-                    }
-                )
+        base64_audio = base64.b64encode(event.audio).decode("utf-8")
+        await self._send_raw_message(
+            RealtimeModelSendRawMessage(
+                message={
+                    "type": "input_audio_buffer.append",
+                    "other_data": {
+                        "audio": base64_audio,
+                    },
+                }
             )
-            if event.commit:
-                await self._send_raw_message(
-                    RealtimeModelSendRawMessage(message={"type": "input_audio_buffer.commit"})
-                )
-        except Exception as e:
-            await self._emit_event(
-                RealtimeModelExceptionEvent(exception=e, context="Failed to send audio")
+        )
+        if event.commit:
+            await self._send_raw_message(
+                RealtimeModelSendRawMessage(message={"type": "input_audio_buffer.commit"})
             )
 
     async def _send_tool_output(self, event: RealtimeModelSendToolOutput) -> None:
-        """Send tool output to the model."""
         await self._send_raw_message(
             RealtimeModelSendRawMessage(
                 message={
@@ -299,7 +299,6 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
             )
 
     async def _send_interrupt(self, event: RealtimeModelSendInterrupt) -> None:
-        """Send an interrupt to the model."""
         if not self._current_item_id or not self._audio_start_time:
             return
 
@@ -325,6 +324,10 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
         self._audio_start_time = None
         self._audio_length_ms = 0.0
         self._current_audio_content_index = None
+
+    async def _send_session_update(self, event: RealtimeModelSendSessionUpdate) -> None:
+        """Send a session update to the model."""
+        await self._update_session_config(event.session_settings)
 
     async def _handle_audio_delta(self, parsed: ResponseAudioDeltaEvent) -> None:
         """Handle audio delta events and update audio tracking state."""
@@ -418,8 +421,17 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
             parsed: OpenAIRealtimeServerEvent = TypeAdapter(
                 OpenAIRealtimeServerEvent
             ).validate_python(event)
+        except pydantic.ValidationError as e:
+            logger.error(f"Failed to validate server event: {event}", exc_info=True)
+            await self._emit_event(
+                RealtimeModelErrorEvent(
+                    error=e,
+                )
+            )
+            return
         except Exception as e:
             event_type = event.get("type", "unknown") if isinstance(event, dict) else "unknown"
+            logger.error(f"Failed to validate server event: {event}", exc_info=True)
             await self._emit_event(
                 RealtimeModelExceptionEvent(
                     exception=e,
@@ -492,3 +504,66 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
             or parsed.type == "response.output_item.done"
         ):
             await self._handle_output_item(parsed.item)
+
+    async def _update_session_config(self, model_settings: RealtimeSessionModelSettings) -> None:
+        session_config = self._get_session_config(model_settings)
+        await self._send_raw_message(
+            RealtimeModelSendRawMessage(
+                message={
+                    "type": "session.update",
+                    "other_data": {
+                        "session": session_config.model_dump(exclude_unset=True, exclude_none=True)
+                    },
+                }
+            )
+        )
+
+    def _get_session_config(
+        self, model_settings: RealtimeSessionModelSettings
+    ) -> OpenAISessionObject:
+        """Get the session config."""
+        return OpenAISessionObject(
+            instructions=model_settings.get("instructions", None),
+            model=(
+                model_settings.get("model_name", self.model)  # type: ignore
+                or DEFAULT_MODEL_SETTINGS.get("model_name")
+            ),
+            voice=model_settings.get("voice", DEFAULT_MODEL_SETTINGS.get("voice")),
+            modalities=model_settings.get("modalities", DEFAULT_MODEL_SETTINGS.get("modalities")),
+            input_audio_format=model_settings.get(
+                "input_audio_format",
+                DEFAULT_MODEL_SETTINGS.get("input_audio_format"),  # type: ignore
+            ),
+            output_audio_format=model_settings.get(
+                "output_audio_format",
+                DEFAULT_MODEL_SETTINGS.get("output_audio_format"),  # type: ignore
+            ),
+            input_audio_transcription=model_settings.get(
+                "input_audio_transcription",
+                DEFAULT_MODEL_SETTINGS.get("input_audio_transcription"),  # type: ignore
+            ),
+            turn_detection=model_settings.get(
+                "turn_detection",
+                DEFAULT_MODEL_SETTINGS.get("turn_detection"),  # type: ignore
+            ),
+            tool_choice=model_settings.get(
+                "tool_choice",
+                DEFAULT_MODEL_SETTINGS.get("tool_choice"),  # type: ignore
+            ),
+            tools=self._tools_to_session_tools(model_settings.get("tools", [])),
+        )
+
+    def _tools_to_session_tools(self, tools: list[Tool]) -> list[OpenAISessionTool]:
+        converted_tools: list[OpenAISessionTool] = []
+        for tool in tools:
+            if not isinstance(tool, FunctionTool):
+                raise UserError(f"Tool {tool.name} is unsupported. Must be a function tool.")
+            converted_tools.append(
+                OpenAISessionTool(
+                    name=tool.name,
+                    description=tool.description,
+                    parameters=tool.params_json_schema,
+                    type="function",
+                )
+            )
+        return converted_tools

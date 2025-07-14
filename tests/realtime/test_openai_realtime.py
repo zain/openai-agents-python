@@ -174,22 +174,21 @@ class TestEventHandlingRobustness(TestOpenAIRealtimeWebSocketModel):
 
     @pytest.mark.asyncio
     async def test_handle_malformed_json_logs_error_continues(self, model):
-        """Test that malformed JSON emits exception event but doesn't crash."""
+        """Test that malformed JSON emits error event but doesn't crash."""
         mock_listener = AsyncMock()
         model.add_listener(mock_listener)
 
         # Malformed JSON should not crash the handler
         await model._handle_ws_event("invalid json {")
 
-        # Should emit exception event to listeners
+        # Should emit error event to listeners
         mock_listener.on_event.assert_called_once()
-        exception_event = mock_listener.on_event.call_args[0][0]
-        assert exception_event.type == "exception"
-        assert "Failed to validate server event: unknown" in exception_event.context
+        error_event = mock_listener.on_event.call_args[0][0]
+        assert error_event.type == "error"
 
     @pytest.mark.asyncio
     async def test_handle_invalid_event_schema_logs_error(self, model):
-        """Test that events with invalid schema emit exception events but don't crash."""
+        """Test that events with invalid schema emit error events but don't crash."""
         mock_listener = AsyncMock()
         model.add_listener(mock_listener)
 
@@ -197,11 +196,10 @@ class TestEventHandlingRobustness(TestOpenAIRealtimeWebSocketModel):
 
         await model._handle_ws_event(invalid_event)
 
-        # Should emit exception event to listeners
+        # Should emit error event to listeners
         mock_listener.on_event.assert_called_once()
-        exception_event = mock_listener.on_event.call_args[0][0]
-        assert exception_event.type == "exception"
-        assert "Failed to validate server event: response.audio.delta" in exception_event.context
+        error_event = mock_listener.on_event.call_args[0][0]
+        assert error_event.type == "error"
 
     @pytest.mark.asyncio
     async def test_handle_unknown_event_type_ignored(self, model):

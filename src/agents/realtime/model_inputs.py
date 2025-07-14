@@ -5,6 +5,7 @@ from typing import Any, Literal, Union
 
 from typing_extensions import NotRequired, TypeAlias, TypedDict
 
+from .config import RealtimeSessionModelSettings
 from .model_events import RealtimeModelToolCallEvent
 
 
@@ -81,10 +82,19 @@ class RealtimeModelSendInterrupt:
     """Send an interrupt to the model."""
 
 
+@dataclass
+class RealtimeModelSendSessionUpdate:
+    """Send a session update to the model."""
+
+    session_settings: RealtimeSessionModelSettings
+    """The updated session settings to send."""
+
+
 RealtimeModelSendEvent: TypeAlias = Union[
     RealtimeModelSendRawMessage,
     RealtimeModelSendUserInput,
     RealtimeModelSendAudio,
     RealtimeModelSendToolOutput,
     RealtimeModelSendInterrupt,
+    RealtimeModelSendSessionUpdate,
 ]

@@ -794,8 +794,23 @@ class TestToolCallExecution:
         assert sent_output == "result_two"
 
     @pytest.mark.asyncio
-    async def test_handoff_tool_handling_todo(self, mock_model, mock_agent, mock_handoff):
-        """Test that handoff tools are recognized but not yet implemented"""
+    async def test_handoff_tool_handling(self, mock_model, mock_agent, mock_handoff):
+        """Test that handoff tools are properly handled"""
+        from unittest.mock import AsyncMock
+
+        from agents.realtime.agent import RealtimeAgent
+
+        # Create a mock new agent to be returned by handoff
+        mock_new_agent = Mock(spec=RealtimeAgent)
+        mock_new_agent.name = "new_agent"
+        mock_new_agent.instructions = "New agent instructions"
+        mock_new_agent.get_all_tools = AsyncMock(return_value=[])
+        mock_new_agent.get_system_prompt = AsyncMock(return_value="New agent system prompt")
+
+        # Set up handoff to return the new agent
+        mock_handoff.on_invoke_handoff = AsyncMock(return_value=mock_new_agent)
+        mock_handoff.name = "test_handoff"
+
         # Set up agent to return handoff tool
         mock_agent.get_all_tools.return_value = [mock_handoff]
 
@@ -807,15 +822,22 @@ class TestToolCallExecution:
 
         await session._handle_tool_call(tool_call_event)
 
-        # Should not have sent any tool outputs (handoffs not implemented)
-        assert len(mock_model.sent_tool_outputs) == 0
+        # Should have sent session update and tool output
+        assert len(mock_model.sent_events) >= 2
 
-        # Should not have queued any events (handoffs not implemented)
-        assert session._event_queue.qsize() == 0
+        # Should have sent handoff event
+        assert session._event_queue.qsize() >= 1
+
+        # Verify agent was updated
+        assert session._current_agent == mock_new_agent
 
     @pytest.mark.asyncio
-    async def test_unknown_tool_handling_todo(self, mock_model, mock_agent, mock_function_tool):
-        """Test that unknown tools are handled gracefully (TODO: add error handling)"""
+    async def test_unknown_tool_handling(self, mock_model, mock_agent, mock_function_tool):
+        """Test that unknown tools raise an error"""
+        import pytest
+
+        from agents.exceptions import ModelBehaviorError
+
         # Set up agent to return different tool than what's called
         mock_function_tool.name = "known_tool"
         mock_agent.get_all_tools.return_value = [mock_function_tool]
@@ -827,16 +849,12 @@ class TestToolCallExecution:
             name="unknown_tool", call_id="call_unknown", arguments="{}"
         )
 
-        await session._handle_tool_call(tool_call_event)
+        # Should raise an error for unknown tool
+        with pytest.raises(ModelBehaviorError, match="Tool unknown_tool not found"):
+            await session._handle_tool_call(tool_call_event)
 
         # Should not have called any tools
         mock_function_tool.on_invoke_tool.assert_not_called()
-
-        # Should not have sent any tool outputs
-        assert len(mock_model.sent_tool_outputs) == 0
-
-        # Should not have queued any events
-        assert session._event_queue.qsize() == 0
 
     @pytest.mark.asyncio
     async def test_function_tool_exception_handling(

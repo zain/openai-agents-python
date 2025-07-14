@@ -7,12 +7,13 @@ from typing import Any, cast
 from typing_extensions import assert_never
 
 from ..agent import Agent
+from ..exceptions import ModelBehaviorError, UserError
 from ..handoffs import Handoff
 from ..run_context import RunContextWrapper, TContext
 from ..tool import FunctionTool
 from ..tool_context import ToolContext
 from .agent import RealtimeAgent
-from .config import RealtimeRunConfig, RealtimeUserInput
+from .config import RealtimeRunConfig, RealtimeSessionModelSettings, RealtimeUserInput
 from .events import (
     RealtimeAgentEndEvent,
     RealtimeAgentStartEvent,
@@ -22,6 +23,7 @@ from .events import (
     RealtimeError,
     RealtimeEventInfo,
     RealtimeGuardrailTripped,
+    RealtimeHandoffEvent,
     RealtimeHistoryAdded,
     RealtimeHistoryUpdated,
     RealtimeRawModelEvent,
@@ -39,6 +41,7 @@ from .model_events import (
 from .model_inputs import (
     RealtimeModelSendAudio,
     RealtimeModelSendInterrupt,
+    RealtimeModelSendSessionUpdate,
     RealtimeModelSendToolOutput,
     RealtimeModelSendUserInput,
 )
@@ -269,9 +272,11 @@ class RealtimeSession(RealtimeModelListener):
             tool_context = ToolContext.from_agent_context(self._context_wrapper, event.call_id)
             result = await func_tool.on_invoke_tool(tool_context, event.arguments)
 
-            await self._model.send_event(RealtimeModelSendToolOutput(
-                tool_call=event, output=str(result), start_response=True
-            ))
+            await self._model.send_event(
+                RealtimeModelSendToolOutput(
+                    tool_call=event, output=str(result), start_response=True
+                )
+            )
 
             await self._put_event(
                 RealtimeToolEnd(
@@ -282,11 +287,47 @@ class RealtimeSession(RealtimeModelListener):
                 )
             )
         elif event.name in handoff_map:
-            # TODO (rm) Add support for handoffs
-            pass
+            handoff = handoff_map[event.name]
+            tool_context = ToolContext.from_agent_context(self._context_wrapper, event.call_id)
+
+            # Execute the handoff to get the new agent
+            result = await handoff.on_invoke_handoff(self._context_wrapper, event.arguments)
+            if not isinstance(result, RealtimeAgent):
+                raise UserError(f"Handoff {handoff.name} returned invalid result: {type(result)}")
+
+            # Store previous agent for event
+            previous_agent = self._current_agent
+
+            # Update current agent
+            self._current_agent = result
+
+            # Get updated model settings from new agent
+            updated_settings = await self._get__updated_model_settings(self._current_agent)
+
+            # Send handoff event
+            await self._put_event(
+                RealtimeHandoffEvent(
+                    from_agent=previous_agent,
+                    to_agent=self._current_agent,
+                    info=self._event_info,
+                )
+            )
+
+            # Send tool output to complete the handoff
+            await self._model.send_event(
+                RealtimeModelSendToolOutput(
+                    tool_call=event,
+                    output=f"Handed off to {self._current_agent.name}",
+                    start_response=True,
+                )
+            )
+
+            # Send session update to model
+            await self._model.send_event(
+                RealtimeModelSendSessionUpdate(session_settings=updated_settings)
+            )
         else:
-            # TODO (rm) Add error handling
-            pass
+            raise ModelBehaviorError(f"Tool {event.name} not found")
 
     @classmethod
     def _get_new_history(
@@ -379,9 +420,11 @@ class RealtimeSession(RealtimeModelListener):
 
             # Send guardrail triggered message
             guardrail_names = [result.guardrail.get_name() for result in triggered_results]
-            await self._model.send_event(RealtimeModelSendUserInput(
-                user_input=f"guardrail triggered: {', '.join(guardrail_names)}"
-            ))
+            await self._model.send_event(
+                RealtimeModelSendUserInput(
+                    user_input=f"guardrail triggered: {', '.join(guardrail_names)}"
+                )
+            )
 
             return True
 
@@ -434,3 +477,16 @@ class RealtimeSession(RealtimeModelListener):
 
         # Mark as closed
         self._closed = True
+
+    async def _get__updated_model_settings(
+        self, new_agent: RealtimeAgent
+    ) -> RealtimeSessionModelSettings:
+        updated_settings: RealtimeSessionModelSettings = {}
+        instructions, tools = await asyncio.gather(
+            new_agent.get_system_prompt(self._context_wrapper),
+            new_agent.get_all_tools(self._context_wrapper),
+        )
+        updated_settings["instructions"] = instructions or ""
+        updated_settings["tools"] = tools or []
+
+        return updated_settings

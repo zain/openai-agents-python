@@ -100,6 +100,7 @@ class TestRealtimeTracingIntegration:
 
                     # Should send session.update with tracing config
                     from agents.realtime.model_inputs import RealtimeModelSendRawMessage
+
                     expected_event = RealtimeModelSendRawMessage(
                         message={
                             "type": "session.update",
@@ -144,6 +145,7 @@ class TestRealtimeTracingIntegration:
 
                     # Should send session.update with "auto"
                     from agents.realtime.model_inputs import RealtimeModelSendRawMessage
+
                     expected_event = RealtimeModelSendRawMessage(
                         message={
                             "type": "session.update",
@@ -208,6 +210,7 @@ class TestRealtimeTracingIntegration:
 
                     # Should send session.update with complete tracing config including metadata
                     from agents.realtime.model_inputs import RealtimeModelSendRawMessage
+
                     expected_event = RealtimeModelSendRawMessage(
                         message={
                             "type": "session.update",
