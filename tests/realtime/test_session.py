@@ -295,7 +295,7 @@ class TestEventHandling:
         # Check that item was updated
         assert len(session._history) == 1
         updated_item = cast(AssistantMessageItem, session._history[0])
-        assert updated_item.content[0].text == "Updated"
+        assert updated_item.content[0].text == "Updated"  # type: ignore
 
         # Should have 2 events: raw + history updated (not added)
         assert session._event_queue.qsize() == 2
@@ -526,7 +526,7 @@ class TestHistoryManagement:
         # Item should be updated
         result_item = cast(AssistantMessageItem, new_history[0])
         assert result_item.item_id == "item_1"
-        assert result_item.content[0].text == "Updated"
+        assert result_item.content[0].text == "Updated"  # type: ignore
 
     def test_update_existing_item_preserves_order(self):
         """Test that updating existing item preserves its position in history"""
@@ -559,13 +559,13 @@ class TestHistoryManagement:
 
         # Middle item should be updated
         updated_result = cast(AssistantMessageItem, new_history[1])
-        assert updated_result.content[0].text == "Updated Second"
+        assert updated_result.content[0].text == "Updated Second"  # type: ignore
 
         # Other items should be unchanged
         item1_result = cast(AssistantMessageItem, new_history[0])
         item3_result = cast(AssistantMessageItem, new_history[2])
-        assert item1_result.content[0].text == "First"
-        assert item3_result.content[0].text == "Third"
+        assert item1_result.content[0].text == "First"  # type: ignore
+        assert item3_result.content[0].text == "Third"  # type: ignore
 
     def test_insert_new_item_after_previous_item(self):
         """Test inserting new item after specified previous_item_id"""
@@ -600,7 +600,7 @@ class TestHistoryManagement:
 
         # Content should be correct
         item2_result = cast(AssistantMessageItem, new_history[1])
-        assert item2_result.content[0].text == "Second"
+        assert item2_result.content[0].text == "Second"  # type: ignore
 
     def test_insert_new_item_after_nonexistent_previous_item(self):
         """Test that item with nonexistent previous_item_id gets added to end"""
@@ -703,7 +703,7 @@ class TestHistoryManagement:
         assert len(history) == 4
         assert [item.item_id for item in history] == ["A", "B", "D", "C"]
         itemB_result = cast(AssistantMessageItem, history[1])
-        assert itemB_result.content[0].text == "Updated B"
+        assert itemB_result.content[0].text == "Updated B"  # type: ignore
 
 
 # Test 3: Tool call execution flow (_handle_tool_call method)
