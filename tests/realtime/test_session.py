@@ -1,5 +1,5 @@
 from typing import cast
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, PropertyMock
 
 import pytest
 
@@ -101,6 +101,8 @@ class MockRealtimeModel(RealtimeModel):
 def mock_agent():
     agent = Mock(spec=RealtimeAgent)
     agent.get_all_tools = AsyncMock(return_value=[])
+
+    type(agent).handoffs = PropertyMock(return_value=[])
     return agent
 
 
@@ -794,30 +796,26 @@ class TestToolCallExecution:
         assert sent_output == "result_two"
 
     @pytest.mark.asyncio
-    async def test_handoff_tool_handling(self, mock_model, mock_agent, mock_handoff):
-        """Test that handoff tools are properly handled"""
-        from unittest.mock import AsyncMock
+    async def test_handoff_tool_handling(self, mock_model):
+        first_agent = RealtimeAgent(
+            name="first_agent",
+            instructions="first_agent_instructions",
+            tools=[],
+            handoffs=[],
+        )
+        second_agent = RealtimeAgent(
+            name="second_agent",
+            instructions="second_agent_instructions",
+            tools=[],
+            handoffs=[],
+        )
 
-        from agents.realtime.agent import RealtimeAgent
+        first_agent.handoffs = [second_agent]
 
-        # Create a mock new agent to be returned by handoff
-        mock_new_agent = Mock(spec=RealtimeAgent)
-        mock_new_agent.name = "new_agent"
-        mock_new_agent.instructions = "New agent instructions"
-        mock_new_agent.get_all_tools = AsyncMock(return_value=[])
-        mock_new_agent.get_system_prompt = AsyncMock(return_value="New agent system prompt")
-
-        # Set up handoff to return the new agent
-        mock_handoff.on_invoke_handoff = AsyncMock(return_value=mock_new_agent)
-        mock_handoff.name = "test_handoff"
-
-        # Set up agent to return handoff tool
-        mock_agent.get_all_tools.return_value = [mock_handoff]
-
-        session = RealtimeSession(mock_model, mock_agent, None)
+        session = RealtimeSession(mock_model, first_agent, None)
 
         tool_call_event = RealtimeModelToolCallEvent(
-            name="test_handoff", call_id="call_789", arguments="{}"
+            name=Handoff.default_tool_name(second_agent), call_id="call_789", arguments="{}"
         )
 
         await session._handle_tool_call(tool_call_event)
@@ -829,7 +827,7 @@ class TestToolCallExecution:
         assert session._event_queue.qsize() >= 1
 
         # Verify agent was updated
-        assert session._current_agent == mock_new_agent
+        assert session._current_agent == second_agent
 
     @pytest.mark.asyncio
     async def test_unknown_tool_handling(self, mock_model, mock_agent, mock_function_tool):
