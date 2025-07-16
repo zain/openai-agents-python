@@ -264,16 +264,16 @@ async def test_mcp_fastmcp_behavior_verification():
     result = await MCPUtil.invoke_mcp_tool(server, tool, ctx, "")
     assert result == "[]", f"[] should return '[]', got {result}"
 
-    # Case 3: {} -> {"type":"text","text":"{}","annotations":null}.
+    # Case 3: {} -> {"type":"text","text":"{}","annotations":null,"meta":null}.
     server._custom_content = [TextContent(text="{}", type="text")]
     result = await MCPUtil.invoke_mcp_tool(server, tool, ctx, "")
-    expected = '{"type":"text","text":"{}","annotations":null}'
+    expected = '{"type":"text","text":"{}","annotations":null,"meta":null}'
     assert result == expected, f"{{}} should return {expected}, got {result}"
 
-    # Case 4: [{}] -> {"type":"text","text":"{}","annotations":null}.
+    # Case 4: [{}] -> {"type":"text","text":"{}","annotations":null,"meta":null}.
     server._custom_content = [TextContent(text="{}", type="text")]
     result = await MCPUtil.invoke_mcp_tool(server, tool, ctx, "")
-    expected = '{"type":"text","text":"{}","annotations":null}'
+    expected = '{"type":"text","text":"{}","annotations":null,"meta":null}'
     assert result == expected, f"[{{}}] should return {expected}, got {result}"
 
     # Case 5: [[]] -> "[]".
@@ -284,7 +284,7 @@ async def test_mcp_fastmcp_behavior_verification():
     # Case 6: String values work normally.
     server._custom_content = [TextContent(text="hello", type="text")]
     result = await MCPUtil.invoke_mcp_tool(server, tool, ctx, "")
-    expected = '{"type":"text","text":"hello","annotations":null}'
+    expected = '{"type":"text","text":"hello","annotations":null,"meta":null}'
     assert result == expected, f"String should return {expected}, got {result}"
 
 
