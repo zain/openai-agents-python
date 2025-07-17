@@ -29,7 +29,7 @@ from agents.realtime.items import (
     RealtimeItem,
     UserMessageItem,
 )
-from agents.realtime.model import RealtimeModel
+from agents.realtime.model import RealtimeModel, RealtimeModelConfig
 from agents.realtime.model_events import (
     RealtimeModelAudioDoneEvent,
     RealtimeModelAudioEvent,
@@ -1206,3 +1206,117 @@ class TestGuardrailFunctionality:
         guardrail_events = [e for e in events if isinstance(e, RealtimeGuardrailTripped)]
         assert len(guardrail_events) == 1
         assert len(guardrail_events[0].guardrail_results) == 2
+
+
+class TestModelSettingsIntegration:
+    """Test suite for model settings integration in RealtimeSession."""
+
+    @pytest.mark.asyncio
+    async def test_session_gets_model_settings_from_agent_during_connection(self):
+        """Test that session properly gets model settings from agent during __aenter__."""
+        # Create mock model that records the config passed to connect()
+        mock_model = Mock(spec=RealtimeModel)
+        mock_model.connect = AsyncMock()
+        mock_model.add_listener = Mock()
+
+        # Create agent with specific settings
+        agent = Mock(spec=RealtimeAgent)
+        agent.get_system_prompt = AsyncMock(return_value="Test agent instructions")
+        agent.get_all_tools = AsyncMock(return_value=[{"type": "function", "name": "test_tool"}])
+        agent.handoffs = []
+
+        session = RealtimeSession(mock_model, agent, None)
+
+        # Connect the session
+        await session.__aenter__()
+
+        # Verify model.connect was called with settings from agent
+        mock_model.connect.assert_called_once()
+        connect_config = mock_model.connect.call_args[0][0]
+
+        initial_settings = connect_config["initial_model_settings"]
+        assert initial_settings["instructions"] == "Test agent instructions"
+        assert initial_settings["tools"] == [{"type": "function", "name": "test_tool"}]
+        assert initial_settings["handoffs"] == []
+
+        await session.__aexit__(None, None, None)
+
+    @pytest.mark.asyncio
+    async def test_model_config_overrides_agent_settings(self):
+        """Test that initial_model_settings from model_config override agent settings."""
+        mock_model = Mock(spec=RealtimeModel)
+        mock_model.connect = AsyncMock()
+        mock_model.add_listener = Mock()
+
+        agent = Mock(spec=RealtimeAgent)
+        agent.get_system_prompt = AsyncMock(return_value="Agent instructions")
+        agent.get_all_tools = AsyncMock(return_value=[{"type": "function", "name": "agent_tool"}])
+        agent.handoffs = []
+
+        # Provide model config with overrides
+        model_config: RealtimeModelConfig = {
+            "initial_model_settings": {
+                "instructions": "Override instructions",
+                "voice": "nova",
+                "model_name": "gpt-4o-realtime",
+            }
+        }
+
+        session = RealtimeSession(mock_model, agent, None, model_config=model_config)
+
+        await session.__aenter__()
+
+        # Verify overrides were applied
+        connect_config = mock_model.connect.call_args[0][0]
+        initial_settings = connect_config["initial_model_settings"]
+
+        # Should have override values
+        assert initial_settings["instructions"] == "Override instructions"
+        assert initial_settings["voice"] == "nova"
+        assert initial_settings["model_name"] == "gpt-4o-realtime"
+        # Should still have agent tools since not overridden
+        assert initial_settings["tools"] == [{"type": "function", "name": "agent_tool"}]
+
+        await session.__aexit__(None, None, None)
+
+    @pytest.mark.asyncio
+    async def test_handoffs_are_included_in_model_settings(self):
+        """Test that handoffs from agent are properly processed into model settings."""
+        mock_model = Mock(spec=RealtimeModel)
+        mock_model.connect = AsyncMock()
+        mock_model.add_listener = Mock()
+
+        # Create agent with handoffs
+        agent = Mock(spec=RealtimeAgent)
+        agent.get_system_prompt = AsyncMock(return_value="Agent with handoffs")
+        agent.get_all_tools = AsyncMock(return_value=[])
+
+        # Create a mock handoff
+        handoff_agent = Mock(spec=RealtimeAgent)
+        handoff_agent.name = "handoff_target"
+
+        mock_handoff = Mock(spec=Handoff)
+        mock_handoff.tool_name = "transfer_to_specialist"
+        mock_handoff.is_enabled = True
+
+        agent.handoffs = [handoff_agent]  # Agent handoff
+
+        # Mock the _get_handoffs method since it's complex
+        with pytest.MonkeyPatch().context() as m:
+
+            async def mock_get_handoffs(cls, agent, context_wrapper):
+                return [mock_handoff]
+
+            m.setattr("agents.realtime.session.RealtimeSession._get_handoffs", mock_get_handoffs)
+
+            session = RealtimeSession(mock_model, agent, None)
+
+            await session.__aenter__()
+
+            # Verify handoffs were included
+            connect_config = mock_model.connect.call_args[0][0]
+            initial_settings = connect_config["initial_model_settings"]
+
+            assert initial_settings["handoffs"] == [mock_handoff]
+
+            await session.__aexit__(None, None, None)

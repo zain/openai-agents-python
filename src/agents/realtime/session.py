@@ -114,8 +114,13 @@ class RealtimeSession(RealtimeModelListener):
         # Add ourselves as a listener
         self._model.add_listener(self)
 
+        model_config = self._model_config.copy()
+        model_config["initial_model_settings"] = await self._get_updated_model_settings_from_agent(
+            self._current_agent
+        )
+
         # Connect to the model
-        await self._model.connect(self._model_config)
+        await self._model.connect(model_config)
 
         # Emit initial history update
         await self._put_event(
@@ -319,7 +324,9 @@ class RealtimeSession(RealtimeModelListener):
             self._current_agent = result
 
             # Get updated model settings from new agent
-            updated_settings = await self._get__updated_model_settings(self._current_agent)
+            updated_settings = await self._get_updated_model_settings_from_agent(
+                self._current_agent
+            )
 
             # Send handoff event
             await self._put_event(
@@ -495,18 +502,27 @@ class RealtimeSession(RealtimeModelListener):
         # Mark as closed
         self._closed = True
 
-    async def _get__updated_model_settings(
-        self, new_agent: RealtimeAgent
+    async def _get_updated_model_settings_from_agent(
+        self,
+        agent: RealtimeAgent,
     ) -> RealtimeSessionModelSettings:
         updated_settings: RealtimeSessionModelSettings = {}
         instructions, tools, handoffs = await asyncio.gather(
-            new_agent.get_system_prompt(self._context_wrapper),
-            new_agent.get_all_tools(self._context_wrapper),
-            self._get_handoffs(new_agent, self._context_wrapper),
+            agent.get_system_prompt(self._context_wrapper),
+            agent.get_all_tools(self._context_wrapper),
+            self._get_handoffs(agent, self._context_wrapper),
         )
         updated_settings["instructions"] = instructions or ""
         updated_settings["tools"] = tools or []
         updated_settings["handoffs"] = handoffs or []
+
+        # Override with initial settings
+        initial_settings = self._model_config.get("initial_model_settings", {})
+        updated_settings.update(initial_settings)
+
+        disable_tracing = self._run_config.get("tracing_disabled", False)
+        if disable_tracing:
+            updated_settings["tracing"] = None
 
         return updated_settings
 
