@@ -107,6 +107,11 @@ class RealtimeSession(RealtimeModelListener):
 
         self._guardrail_tasks: set[asyncio.Task[Any]] = set()
 
+    @property
+    def model(self) -> RealtimeModel:
+        """Access the underlying model for adding listeners or other direct interaction."""
+        return self._model
+
     async def __aenter__(self) -> RealtimeSession:
         """Start the session by connecting to the model. After this, you will be able to stream
         events from the model and send messages and audio to the model.
