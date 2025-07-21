@@ -153,4 +153,3 @@ BadRequestError: Error code: 400 - {'error': {'message': "'response_format.type'
 - 対応していないプロバイダーには未サポートの `tools` を送らない  
 - テキストのみのモデルを呼び出す前にマルチモーダル入力を除外する  
 - structured JSON 出力をサポートしていないプロバイダーでは、不正な JSON が返ることがある点に注意する
-- structured JSON 出力をサポートしていないプロバイダーでは、不正な JSON が返ることがある点に注意する
